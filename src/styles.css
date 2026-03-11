@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+.dark {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  background: #0b1118;
+  color: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .shadow-panel,
+  button {
+    box-shadow: none !important;
+  }
+}
