@@ -33,7 +33,7 @@ export function SummarySidebar({ scenario, metrics, breakdown }: Props) {
       "Modelled kilometres driven over the full ownership horizon."
   };
   return (
-    <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+    <aside className="space-y-6">
       <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.04))] p-5 shadow-panel backdrop-blur">
         <div className="text-xs font-bold uppercase tracking-[0.22em] text-accent-200">
           Summary

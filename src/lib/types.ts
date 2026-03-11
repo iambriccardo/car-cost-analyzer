@@ -1,38 +1,19 @@
 export type CaseMode = "optimistic" | "base" | "pessimistic";
 
-export type CoverageMode = "liability" | "teilkasko" | "vollkasko";
-export type TireStrategy = "all-season" | "dual-set" | "existing-second-set";
-export type DepreciationCurve = "linear" | "accelerated" | "front-loaded-ev";
-
 export interface PurchaseInputs {
   purchasePrice: number;
   registrationCosts: number;
   wltpRangeKm: number;
   ratedMotorPowerKw: number;
   vehicleWeightKg: number;
-  cashPurchase: boolean;
-  downPayment: number;
-  financingApr: number;
-  financingMonths: number;
-  financingAdminFees: number;
-  discountRate: number;
   ownershipYears: number;
-  expectedResaleYear: number;
   expectedResalePercent: number;
-  depreciationCurve: DepreciationCurve;
-  mileageResaleAdjustmentPer10kKm: number;
-  accidentHistoryImpact: number;
-  cosmeticConditionAdjustment: number;
 }
 
 export interface InsuranceInputs {
   monthlyPremium: number;
   includesMotorTax: boolean;
-  deductible: number;
-  coverageMode: CoverageMode;
   premiumInflation: number;
-  claimProbabilityAnnual: number;
-  noClaimBonusAnnual: number;
 }
 
 export interface ParkingInputs {
@@ -40,8 +21,6 @@ export interface ParkingInputs {
   residentPermitEnabled: boolean;
   residentPermitAnnual: number;
   parkingInflation: number;
-  finesReserveAnnual: number;
-  destinationParkingReserveAnnual: number;
 }
 
 export interface DrivingInputs {
@@ -51,13 +30,10 @@ export interface DrivingInputs {
   mixedShare: number;
   seasonalUsageAdjustment: number;
   annualMileageChange: number;
-  tripSeverityFactor: number;
-  drivingEfficiencyFactor: number;
 }
 
 export interface ChargingInputs {
   consumptionKwhPer100Km: number;
-  publicChargingOnly: boolean;
   acShare: number;
   dcShare: number;
   acTariff: number;
@@ -66,59 +42,8 @@ export interface ChargingInputs {
   superchargerTariff: number;
   chargingLosses: number;
   winterEfficiencyPenalty: number;
-  preconditioningPenalty: number;
   idleFeesAnnual: number;
-  subscriptionDiscount: number;
   energyPriceInflation: number;
-  freeChargingShare: number;
-  chargingCardFeesAnnual: number;
-}
-
-export interface MaintenanceInputs {
-  tireReplacementIntervalMonths: number;
-  tireSetCost: number;
-  winterTireStrategy: TireStrategy;
-  tireSwapCost: number;
-  tireStorageAnnual: number;
-  alignmentReserveAnnual: number;
-  cabinFilterIntervalMonths: number;
-  cabinFilterCost: number;
-  wiperReplacementIntervalMonths: number;
-  wiperCost: number;
-  brakeFluidCheckIntervalMonths: number;
-  brakeFluidCost: number;
-  brakeServiceReserveAnnual: number;
-  inspectionReserveAnnual: number;
-  washerFluidReserveAnnual: number;
-  battery12vReplacementYears: number;
-  battery12vCost: number;
-  suspensionWearReserveAnnual: number;
-  cosmeticRepairsReserveAnnual: number;
-  detailingReserveAnnual: number;
-}
-
-export interface RepairInputs {
-  annualRepairReserve: number;
-  stochasticRepairShocks: boolean;
-  bodyworkReserveAnnual: number;
-  glassReserveAnnual: number;
-  roadsideAssistanceAnnual: number;
-  unexpectedRepairProbability: number;
-  minorRepairCost: number;
-  mediumRepairCost: number;
-  majorRepairCost: number;
-  riskTolerance: number;
-}
-
-export interface OtherCostInputs {
-  vignetteAndTollsAnnual: number;
-  carWashAnnual: number;
-  accessoriesAnnual: number;
-  softwareSubscriptionsAnnual: number;
-  opportunityCostOfCapitalAnnual: number;
-  inflationGeneral: number;
-  contingencyReserveAnnual: number;
-  oneOffAccessorySpend: number;
 }
 
 export interface EstimatorInput {
@@ -132,9 +57,6 @@ export interface EstimatorInput {
   parking: ParkingInputs;
   driving: DrivingInputs;
   charging: ChargingInputs;
-  maintenance: MaintenanceInputs;
-  repairs: RepairInputs;
-  other: OtherCostInputs;
 }
 
 export interface SavedScenario {
@@ -149,14 +71,9 @@ export interface SavedScenario {
 
 export interface CategoryBreakdown {
   purchaseAndDepreciation: number;
-  financing: number;
   insuranceAndTax: number;
   parking: number;
   charging: number;
-  maintenance: number;
-  tires: number;
-  repairsAndContingencies: number;
-  otherCosts: number;
 }
 
 export interface YearlyCostRow extends CategoryBreakdown {

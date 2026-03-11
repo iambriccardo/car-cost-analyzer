@@ -1,15 +1,21 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Car, CircleHelp, SlidersHorizontal, X } from "lucide-react";
+import {
+  Suspense,
+  lazy,
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import { CircleHelp, SlidersHorizontal, X } from "lucide-react";
 import { fieldGroups } from "./field-config";
 import { FieldControl } from "../components/Fields";
-import { ChartsPanel } from "../components/ChartsPanel";
 import { ScenarioManager } from "../components/ScenarioManager";
 import { SummarySidebar } from "../components/SummarySidebar";
 import { Tooltip } from "../components/Tooltip";
 import { calculateEstimate } from "../lib/calculator";
 import { exampleScenarios, STORAGE_VERSION } from "../lib/defaults";
 import { formatCurrency, formatNumber, formatPercent } from "../lib/format";
-import { exportScenarioPdf } from "../lib/report";
 import { estimatorSchema, savedScenarioListSchema } from "../lib/schema";
 import { createScenario, loadScenarios, saveScenarios } from "../lib/storage";
 import type { CaseMode, EstimatorInput, SavedScenario } from "../lib/types";
@@ -17,6 +23,9 @@ import { downloadFile, readJsonFile } from "../lib/utils";
 
 const themeStorageKey = "vienna-car-cost-analyzer.theme";
 const fixedCaseMode: CaseMode = "base";
+const ChartsPanel = lazy(() =>
+  import("../components/ChartsPanel").then((module) => ({ default: module.ChartsPanel }))
+);
 
 export function App() {
   const [scenarios, setScenarios] = useState<SavedScenario[]>(() => loadScenarios());
@@ -25,6 +34,7 @@ export function App() {
   );
   const [selectedGroupId, setSelectedGroupId] = useState(fieldGroups[0].id);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -120,12 +130,18 @@ export function App() {
     );
   };
 
-  const exportPdf = () => {
-    exportScenarioPdf({
-      scenario: activeScenario,
-      result,
-      caseMode: fixedCaseMode
-    });
+  const exportPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const { exportScenarioPdf } = await import("../lib/report");
+      exportScenarioPdf({
+        scenario: activeScenario,
+        result,
+        caseMode: fixedCaseMode
+      });
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const importScenarios = async (file: File) => {
@@ -159,38 +175,22 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(74,160,136,0.18),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(230,179,90,0.12),_transparent_22%),linear-gradient(180deg,_#0d141c_0%,_#111b25_38%,_#0b1118_100%)] text-white">
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-        <header className="overflow-hidden rounded-[30px] border border-white/10 bg-white/5 px-5 py-5 shadow-panel backdrop-blur sm:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-accent-900/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-100">
-                <Car className="h-4 w-4" />
-                Vienna EV TCO
-              </div>
-              <h1 className="mt-3 font-display text-3xl tracking-tight text-white sm:text-[2.35rem]">
-                Local car cost planner for Vienna.
-              </h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-white/68">
-                Starts from a Model 3 standard baseline, stays generic, and keeps the active
-                TCO model focused on the costs that matter most: purchase and resale,
-                insurance and tax, parking, and public charging.
-              </p>
-            </div>
-
-            <div className="flex shrink-0 items-start">
-              <button
-                type="button"
-                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink-900 shadow-[0_10px_30px_rgba(255,255,255,0.12)]"
-                onClick={resetToDefaults}
-              >
-                Reset defaults
-              </button>
-            </div>
+      <div className="w-full px-4 py-4 sm:px-5 lg:px-6">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="pl-1 text-base font-semibold tracking-[-0.03em] text-white">
+            Vienna EV TCO
           </div>
-        </header>
+          <button
+            type="button"
+            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink-900 shadow-[0_10px_30px_rgba(255,255,255,0.12)]"
+            onClick={resetToDefaults}
+          >
+            Reset defaults
+          </button>
+        </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-6">
+        <div className="grid gap-5 xl:h-[calc(100vh-5.75rem)] xl:grid-cols-[minmax(0,1fr)_360px] xl:overflow-hidden">
+          <div className="space-y-5 xl:min-h-0 xl:overflow-y-auto">
             <SectionCard
               number="01"
               title="Scenario setup"
@@ -205,7 +205,10 @@ export function App() {
                 onRename={renameScenario}
                 onDelete={deleteScenario}
                 onExportConfig={exportScenarioConfig}
-                onExportPdf={exportPdf}
+                onExportPdf={() => {
+                  exportPdf().catch(() => window.alert("Could not export the PDF report."));
+                }}
+                isExportingPdf={isExportingPdf}
                 onImport={(file) => {
                   importScenarios(file).catch(() =>
                     window.alert("Could not import the scenario file.")
@@ -263,24 +266,32 @@ export function App() {
                   </div>
                   <div className="mt-4">
                     <div className="self-start rounded-[22px] border border-white/10 bg-white/6 px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-white/50">
-                        Time window
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs uppercase tracking-[0.18em] text-white/50">
+                          TCO horizon
+                        </div>
+                        <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-900">
+                          {activeScenario.input.purchase.ownershipYears} years
+                        </div>
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {[3, 4, 5, 6, 7, 8].map((years) => (
-                          <button
-                            key={years}
-                            type="button"
-                            className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                              activeScenario.input.purchase.ownershipYears === years
-                                ? "bg-white text-ink-900"
-                                : "bg-white/10 text-white/70"
-                            }`}
-                            onClick={() => updateInput("purchase.ownershipYears", years)}
-                          >
-                            {years}y
-                          </button>
-                        ))}
+                      <input
+                        type="range"
+                        min={1}
+                        max={30}
+                        step={1}
+                        value={activeScenario.input.purchase.ownershipYears}
+                        className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-white/12 accent-[#8dd3be]"
+                        onChange={(event) =>
+                          updateInput("purchase.ownershipYears", Number(event.target.value))
+                        }
+                      />
+                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                        <span>1 year</span>
+                        <span>30 years</span>
+                      </div>
+                      <div className="mt-3 text-sm leading-6 text-white/65">
+                        The selected TCO horizon is also the assumed resale year. The model runs all
+                        recurring costs through this window and credits the resale value at the end.
                       </div>
                     </div>
                   </div>
@@ -319,21 +330,25 @@ export function App() {
               title="Graphs"
               description="Use the charts to validate how the cost builds up over time, which variables matter most, and how wide the uncertainty range is."
             >
-              <ChartsPanel
-                input={activeScenario.input}
-                caseMode={fixedCaseMode}
-                yearly={result.yearly}
-                breakdown={result.breakdown}
-                simulation={result.simulation}
-              />
+              <Suspense fallback={<ChartsPanelSkeleton />}>
+                <ChartsPanel
+                  input={activeScenario.input}
+                  caseMode={fixedCaseMode}
+                  yearly={result.yearly}
+                  breakdown={result.breakdown}
+                  simulation={result.simulation}
+                />
+              </Suspense>
             </SectionCard>
           </div>
 
-          <SummarySidebar
-            scenario={activeScenario}
-            metrics={result.metrics}
-            breakdown={result.breakdown}
-          />
+          <div className="xl:min-h-0 xl:overflow-y-auto">
+            <SummarySidebar
+              scenario={activeScenario}
+              metrics={result.metrics}
+              breakdown={result.breakdown}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -395,10 +410,7 @@ function ChargingFormulaCard({ scenario }: { scenario: SavedScenario }) {
     100;
   const blendedTariff =
     (charging.acShare * charging.acTariff + charging.dcShare * blendedDcTariff) / 100;
-  const discountedTariff = blendedTariff * (1 - charging.subscriptionDiscount / 100);
-  const billableEnergy = adjustedEnergy * (1 - charging.freeChargingShare / 100);
-  const firstYearCharging =
-    billableEnergy * discountedTariff + charging.idleFeesAnnual + charging.chargingCardFeesAnnual;
+  const firstYearCharging = adjustedEnergy * blendedTariff + charging.idleFeesAnnual;
 
   return (
     <div className="mt-4 rounded-[24px] border border-white/10 bg-white/6 px-4 py-4">
@@ -421,17 +433,35 @@ function ChargingFormulaCard({ scenario }: { scenario: SavedScenario }) {
         </div>
         <div>
           AC/DC split and Supercharger share produce a blended energy price of about{" "}
-          {formatCurrency(discountedTariff, true)}/kWh
+          {formatCurrency(blendedTariff, true)}/kWh
         </div>
         <div>
-          Idle fees and charging-card fees add{" "}
-          {formatCurrency(charging.idleFeesAnnual + charging.chargingCardFeesAnnual)} per year, and energy price inflation
+          Idle fees add {formatCurrency(charging.idleFeesAnnual)} per year, and energy price inflation
           increases both energy and charging-access cost in later years
         </div>
       </div>
       <div className="mt-4 rounded-2xl bg-white/6 px-3 py-3 text-sm font-semibold text-white">
         First-year charging cost from the current inputs: {formatCurrency(firstYearCharging)}
       </div>
+    </div>
+  );
+}
+
+function ChartsPanelSkeleton() {
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div
+          key={index}
+          className={`rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-panel backdrop-blur ${
+            index >= 2 ? "xl:col-span-2" : ""
+          }`}
+        >
+          <div className="h-4 w-36 rounded-full bg-white/10" />
+          <div className="mt-3 h-3 w-64 rounded-full bg-white/6" />
+          <div className="mt-6 h-[300px] rounded-[24px] bg-white/4" />
+        </div>
+      ))}
     </div>
   );
 }

@@ -89,10 +89,7 @@ const deriveTaxSummary = (
   input: EstimatorInput,
   annualMotorTax: number
 ) => {
-  const activeOwnershipYears = Math.min(
-    input.purchase.expectedResaleYear,
-    input.purchase.ownershipYears
-  );
+  const activeOwnershipYears = input.purchase.ownershipYears;
   const purchasePriceGross = derivePurchaseGross(input);
   const insurancePremiumGrossAnnual = roundCurrency(input.insurance.monthlyPremium * 12);
   const insurancePremiumNetOfMotorTaxAnnual = roundCurrency(
@@ -137,27 +134,11 @@ const deriveTaxSummary = (
       },
       {
         label: "Resale timing",
-        expression: `resale year = ${input.purchase.expectedResaleYear} within ${input.purchase.ownershipYears}-year horizon`,
-        value: `Timing affects the annual kilometres used in resale and the year-by-year value path.`
+        expression: `resale happens at the end of the selected ${input.purchase.ownershipYears}-year horizon`,
+        value: `The selected TCO horizon is also the sale point used for the resale credit.`
       }
     ]
   };
-};
-
-const depreciationFactorForYear = (
-  year: number,
-  years: number,
-  curve: EstimatorInput["purchase"]["depreciationCurve"]
-) => {
-  const progress = clamp(year / years, 0, 1);
-  switch (curve) {
-    case "linear":
-      return progress;
-    case "accelerated":
-      return progress ** 0.75;
-    case "front-loaded-ev":
-      return 1 - (1 - progress) ** 1.75;
-  }
 };
 
 export const applyCaseMode = (
@@ -179,21 +160,11 @@ export const applyCaseMode = (
         input.purchase.expectedResalePercent + factor * -4,
         20,
         80
-      ),
-      mileageResaleAdjustmentPer10kKm: clamp(
-        input.purchase.mileageResaleAdjustmentPer10kKm + factor * 0.4,
-        0,
-        10
       )
     },
     insurance: {
       ...input.insurance,
-      premiumInflation: clamp(input.insurance.premiumInflation + factor * 1, 0, 10),
-      claimProbabilityAnnual: clamp(
-        input.insurance.claimProbabilityAnnual + factor * 2,
-        1,
-        40
-      )
+      premiumInflation: clamp(input.insurance.premiumInflation + factor * 1, 0, 10)
     },
     charging: {
       ...input.charging,
@@ -208,44 +179,25 @@ export const applyCaseMode = (
         20
       )
     },
-    repairs: {
-      ...input.repairs,
-      annualRepairReserve: Math.max(0, input.repairs.annualRepairReserve + factor * 90),
-      unexpectedRepairProbability: clamp(
-        input.repairs.unexpectedRepairProbability + factor * 4,
-        1,
-        50
-      )
-    },
-    other: {
-      ...input.other,
-      inflationGeneral: clamp(input.other.inflationGeneral + factor * 0.8, 0, 8)
+    parking: {
+      ...input.parking,
+      parkingInflation: clamp(input.parking.parkingInflation + factor * 0.7, 0, 8)
     }
   };
 };
 
 const computeExpectedResale = (
   input: EstimatorInput,
-  kmUntilResale: number,
-  saleYear: number
+  _kmUntilResale: number
 ) => {
   const purchasePriceGross = derivePurchaseGross(input);
-  const annualKm = kmUntilResale / Math.max(saleYear, 1);
-  const mileageDelta10k = (annualKm - 15000) / 10000;
-  const mileageAdjustment =
-    -mileageDelta10k * input.purchase.mileageResaleAdjustmentPer10kKm;
-  const conditionAdjustment =
-    input.purchase.cosmeticConditionAdjustment - input.purchase.accidentHistoryImpact;
   const rangeAdjustment = clamp(
     ((input.purchase.wltpRangeKm - 500) / 100) * 1.5,
     -4,
     4
   );
   const adjustedPct = clamp(
-    input.purchase.expectedResalePercent +
-      mileageAdjustment +
-      conditionAdjustment +
-      rangeAdjustment,
+    input.purchase.expectedResalePercent + rangeAdjustment,
     10,
     80
   );
@@ -289,21 +241,16 @@ export const calculateEstimate = (
     },
     breakdown: {
       purchaseAndDepreciation: roundCurrency(breakdown.purchaseAndDepreciation),
-      financing: roundCurrency(breakdown.financing),
       insuranceAndTax: roundCurrency(breakdown.insuranceAndTax),
       parking: roundCurrency(breakdown.parking),
-      charging: roundCurrency(breakdown.charging),
-      maintenance: roundCurrency(breakdown.maintenance),
-      tires: roundCurrency(breakdown.tires),
-      repairsAndContingencies: roundCurrency(breakdown.repairsAndContingencies),
-      otherCosts: roundCurrency(breakdown.otherCosts)
+      charging: roundCurrency(breakdown.charging)
     },
     yearly,
     explanations: [
-      `Purchase is modeled as a cash purchase with the entered gross car price, registration fees, and resale-adjusted depreciation over the selected ownership window.`,
+      `Purchase is modeled as a cash purchase with the entered gross car price, registration fees, and a resale credit at the configured sale point.`,
       `Insurance is split between the premium you enter and the derived motorbezogene Versicherungssteuer based on 30-minute power and vehicle mass. When your quote already includes the tax, the app subtracts the derived tax from the premium and shows both parts separately in the audit.`,
       `Charging cost uses driven kilometres, official consumption, route mix, winter penalty, charging losses, AC/DC split, Supercharger share, idle fees, and tariff inflation.`,
-      `The simplified model currently excludes maintenance, repairs, and other recurring cost modules so the dashboard stays focused on the main ownership drivers you chose to keep.`
+      `The active model is intentionally limited to purchase and resale, insurance and tax, parking, and charging so every visible input maps cleanly into the live calculation.`
     ],
     assumptionsAudit: [
       { label: "Vehicle", value: input.meta.vehicleName || defaultInput.meta.vehicleName },
@@ -351,9 +298,9 @@ const calculateDeterministic = (
       seasonalKmFactor
     );
   });
-  const saleYear = Math.min(input.purchase.expectedResaleYear, years);
+  const saleYear = years;
   const kmUntilResale = sum(totalKmByYear.slice(0, saleYear));
-  const estimatedResaleValue = computeExpectedResale(input, kmUntilResale, saleYear);
+  const estimatedResaleValue = computeExpectedResale(input, kmUntilResale);
   const netVehicleCost = Math.max(0, purchasePriceGross - estimatedResaleValue);
   const yearly: YearlyCostRow[] = [];
   let operatingCashOutflow = 0;
@@ -393,20 +340,15 @@ const calculateDeterministic = (
       ]) *
       (1 + percentToDecimal(input.charging.energyPriceInflation)) ** (year - 1);
 
-    const effectiveTariff =
-      weightedAverage([
-        { weight: input.charging.acShare, value: yearAcPrice },
-        { weight: input.charging.dcShare, value: yearDcPrice }
-      ]);
-    const discountedTariff =
-      effectiveTariff * (1 - percentToDecimal(input.charging.subscriptionDiscount));
-    const billableEnergyKwh =
-      yearEnergyKwh * (1 - percentToDecimal(input.charging.freeChargingShare));
+    const effectiveTariff = weightedAverage([
+      { weight: input.charging.acShare, value: yearAcPrice },
+      { weight: input.charging.dcShare, value: yearDcPrice }
+    ]);
     const annualChargingFees =
-      (input.charging.idleFeesAnnual + input.charging.chargingCardFeesAnnual) *
+      input.charging.idleFeesAnnual *
       (1 + percentToDecimal(input.charging.energyPriceInflation)) ** (year - 1);
     const chargingCost = ownsCarThisYear
-      ? billableEnergyKwh * discountedTariff + annualChargingFees
+      ? yearEnergyKwh * effectiveTariff + annualChargingFees
       : 0;
 
     const annualInsuranceGross = ownsCarThisYear
@@ -424,63 +366,27 @@ const calculateDeterministic = (
       : 0;
     const parking = ownsCarThisYear
       ? (input.parking.monthlyParkingCost * 12 +
-          permitCost +
-          input.parking.finesReserveAnnual +
-          input.parking.destinationParkingReserveAnnual) *
+          permitCost) *
         (1 + percentToDecimal(input.parking.parkingInflation)) ** (year - 1)
       : 0;
-
-    const maintenance = 0;
-    const tires = 0;
-    const repairsAndContingencies = 0;
-    const otherCosts = 0;
-
-    const financing = 0;
-    const opportunityCost = 0;
-    const depreciationShare =
-      netVehicleCost *
-      (depreciationFactorForYear(
-        Math.min(year, saleYear),
-        saleYear,
-        input.purchase.depreciationCurve
-      ) -
-        depreciationFactorForYear(
-          Math.min(Math.max(year - 1, 0), saleYear),
-          saleYear,
-          input.purchase.depreciationCurve
-        ));
-
+    const depreciationShare = ownsCarThisYear ? netVehicleCost / Math.max(saleYear, 1) : 0;
     const purchaseAndDepreciation =
-      depreciationShare +
-      (year === 1
-        ? input.purchase.registrationCosts
-        : 0) +
-      opportunityCost;
+      depreciationShare + (year === 1 ? input.purchase.registrationCosts : 0);
 
     const yearCashOutflow = sum([
       year === 1 ? input.purchase.registrationCosts : 0,
-      financing,
       insuranceAndTax,
       parking,
-      chargingCost,
-      maintenance,
-      tires,
-      repairsAndContingencies,
-      otherCosts
+      chargingCost
     ]);
     operatingCashOutflow += yearCashOutflow;
 
     const yearRow: YearlyCostRow = {
       year,
       purchaseAndDepreciation: roundCurrency(purchaseAndDepreciation),
-      financing: roundCurrency(financing),
       insuranceAndTax: roundCurrency(insuranceAndTax),
       parking: roundCurrency(parking),
       charging: roundCurrency(chargingCost),
-      maintenance: roundCurrency(maintenance),
-      tires: roundCurrency(tires),
-      repairsAndContingencies: roundCurrency(repairsAndContingencies),
-      otherCosts: roundCurrency(otherCosts),
       total: 0,
       cumulative: 0,
       kmDriven: roundCurrency(annualKm),
@@ -488,14 +394,9 @@ const calculateDeterministic = (
     };
     yearRow.total = roundCurrency(
       yearRow.purchaseAndDepreciation +
-        yearRow.financing +
         yearRow.insuranceAndTax +
         yearRow.parking +
-        yearRow.charging +
-        yearRow.maintenance +
-        yearRow.tires +
-        yearRow.repairsAndContingencies +
-        yearRow.otherCosts
+        yearRow.charging
     );
     yearRow.cumulative = roundCurrency(
       (yearly.at(-1)?.cumulative ?? 0) + yearRow.total
@@ -507,34 +408,20 @@ const calculateDeterministic = (
   const breakdown = yearly.reduce<CategoryBreakdown>(
     (totals, row) => {
       totals.purchaseAndDepreciation += row.purchaseAndDepreciation;
-      totals.financing += row.financing;
       totals.insuranceAndTax += row.insuranceAndTax;
       totals.parking += row.parking;
       totals.charging += row.charging;
-      totals.maintenance += row.maintenance;
-      totals.tires += row.tires;
-      totals.repairsAndContingencies += row.repairsAndContingencies;
-      totals.otherCosts += row.otherCosts;
       return totals;
     },
     {
       purchaseAndDepreciation: 0,
-      financing: 0,
       insuranceAndTax: 0,
       parking: 0,
-      charging: 0,
-      maintenance: 0,
-      tires: 0,
-      repairsAndContingencies: 0,
-      otherCosts: 0
+      charging: 0
     }
   );
 
-  const acquisitionCash =
-    input.purchase.cashPurchase
-      ? purchasePriceGross
-      : input.purchase.downPayment;
-  const totalCashOutflow = acquisitionCash + operatingCashOutflow;
+  const totalCashOutflow = purchasePriceGross + operatingCashOutflow;
   const totalTco = yearly.at(-1)?.cumulative ?? 0;
 
   return {

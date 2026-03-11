@@ -90,15 +90,6 @@ export const fieldGroups: FieldGroup[] = [
         advanced: true
       },
       {
-        path: "purchase.expectedResaleYear",
-        type: "number",
-        label: "Expected resale year",
-        help: "When you expect to sell the car within the selected time window.",
-        step: 1,
-        min: 1,
-        advanced: true
-      },
-      {
         path: "purchase.expectedResalePercent",
         type: "number",
         label: "Expected resale percent",

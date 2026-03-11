@@ -29,12 +29,7 @@ export const formatNumber = (value: number, suffix = "") =>
 
 export const categoryLabels: Record<string, string> = {
   purchaseAndDepreciation: "Purchase & depreciation",
-  financing: "Financing",
   insuranceAndTax: "Insurance & taxes",
   parking: "Parking",
-  charging: "Charging",
-  maintenance: "Maintenance",
-  tires: "Tires",
-  repairsAndContingencies: "Repairs & contingencies",
-  otherCosts: "Other costs"
+  charging: "Charging"
 };

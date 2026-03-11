@@ -1,5 +1,6 @@
 import clsx from "clsx";
 import { CircleHelp } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { FieldConfig } from "../app/field-config";
 import { Tooltip } from "./Tooltip";
 
@@ -14,6 +15,16 @@ const baseInputClass =
   "mt-2 w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white outline-none transition focus:border-accent-400 focus:ring-2 focus:ring-accent-400/30";
 
 export function FieldControl({ field, value, error, onChange }: Props) {
+  const [draftValue, setDraftValue] = useState(
+    field.type === "number" && typeof value === "number" ? String(value) : ""
+  );
+
+  useEffect(() => {
+    if (field.type === "number" && typeof value === "number" && Number.isFinite(value)) {
+      setDraftValue(String(value));
+    }
+  }, [field.type, value]);
+
   return (
     <label className="block self-start rounded-[24px] border border-white/10 bg-white/4 p-3 shadow-panel backdrop-blur">
       <div className="flex items-start justify-between gap-3">
@@ -48,11 +59,27 @@ export function FieldControl({ field, value, error, onChange }: Props) {
         <input
           className={clsx(baseInputClass, error && "border-rose bg-rose/10")}
           type="number"
-          value={typeof value === "number" && Number.isFinite(value) ? value : 0}
+          inputMode="decimal"
+          value={draftValue}
           step={field.step ?? 1}
           min={field.min}
           max={field.max}
-          onChange={(event) => onChange(event.target.valueAsNumber || 0)}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            setDraftValue(nextValue);
+            if (nextValue === "") {
+              return;
+            }
+            const parsed = Number(nextValue);
+            if (Number.isFinite(parsed)) {
+              onChange(parsed);
+            }
+          }}
+          onBlur={() => {
+            if (draftValue === "") {
+              setDraftValue(typeof value === "number" ? String(value) : "");
+            }
+          }}
         />
       ) : null}
 

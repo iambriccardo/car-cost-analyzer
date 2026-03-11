@@ -19,6 +19,18 @@ describe("calculateEstimate", () => {
     expect(result.yearly).toHaveLength(defaultInput.purchase.ownershipYears);
   });
 
+  it("keeps the default deterministic baseline pinned", () => {
+    const result = calculateEstimate(defaultInput, "base", 0);
+
+    expect(result.metrics.totalTco).toBeCloseTo(46148.39, 2);
+    expect(result.metrics.estimatedResaleValue).toBeCloseTo(16520.75, 2);
+    expect(result.metrics.totalKm).toBeCloseTo(64884.78, 2);
+    expect(result.metrics.costPerKm).toBeCloseTo(0.71, 2);
+    expect(result.breakdown.charging).toBeCloseTo(4530.14, 2);
+    expect(result.yearly[0]?.charging).toBeCloseTo(828.21, 2);
+    expect(result.yearly.at(-1)?.cumulative).toBeCloseTo(46148.39, 2);
+  });
+
   it("derives the Austrian tax summary clearly for the default Tesla scenario", () => {
     const result = calculateEstimate(defaultInput, "base", 0);
     expect(result.taxes.initial.totalInitialTaxesAndFees).toBeCloseTo(
@@ -59,14 +71,9 @@ describe("calculateEstimate", () => {
     result.yearly.forEach((row) => {
       const recomputedYearTotal =
         row.purchaseAndDepreciation +
-        row.financing +
         row.insuranceAndTax +
         row.parking +
-        row.charging +
-        row.maintenance +
-        row.tires +
-        row.repairsAndContingencies +
-        row.otherCosts;
+        row.charging;
       rollingTotal += recomputedYearTotal;
 
       expect(row.total).toBeCloseTo(recomputedYearTotal, 2);
@@ -144,26 +151,15 @@ describe("calculateEstimate", () => {
     expect(withReserve.breakdown.charging).toBeGreaterThan(withoutReserve.breakdown.charging);
   });
 
-  it("stops recurring ownership costs and driven kilometres after the configured resale year", () => {
+  it("uses the selected horizon as the resale point for kilometres and motor-tax horizon totals", () => {
     const input = structuredClone(defaultInput);
-    input.purchase.ownershipYears = 5;
-    input.purchase.expectedResaleYear = 3;
+    input.purchase.ownershipYears = 3;
 
     const result = calculateEstimate(input, "base", 0);
-    const yearsAfterSale = result.yearly.filter((row) => row.year > 3);
-    const kmUntilSale = result.yearly
-      .filter((row) => row.year <= 3)
-      .reduce((sum, row) => sum + row.kmDriven, 0);
+    const totalKmFromRows = result.yearly.reduce((sum, row) => sum + row.kmDriven, 0);
 
-    yearsAfterSale.forEach((row) => {
-      expect(row.insuranceAndTax).toBe(0);
-      expect(row.parking).toBe(0);
-      expect(row.charging).toBe(0);
-      expect(row.kmDriven).toBe(0);
-      expect(row.energyKwh).toBe(0);
-    });
-
-    expect(result.metrics.totalKm).toBeCloseTo(kmUntilSale, 2);
+    expect(result.yearly).toHaveLength(3);
+    expect(result.metrics.totalKm).toBeCloseTo(totalKmFromRows, 2);
     expect(result.taxes.ongoing.horizonMotorTaxTotal).toBeCloseTo(
       result.taxes.ongoing.motorTaxAnnual * 3,
       2
@@ -205,19 +201,6 @@ const applyFieldChange = (input: typeof defaultInput, path: string) => {
     case "insurance.includesMotorTax":
     case "parking.residentPermitEnabled":
       target[field] = !(target[field] as boolean);
-      return;
-    case "purchase.depreciationCurve":
-      input.purchase.expectedResaleYear = 4;
-      target[field] = "linear";
-      return;
-    case "purchase.expectedResaleYear":
-      target[field] = 4;
-      return;
-    case "purchase.mileageResaleAdjustmentPer10kKm":
-      target[field] = 6;
-      return;
-    case "insurance.coverageMode":
-      target[field] = "liability";
       return;
     case "parking.residentPermitAnnual":
       input.parking.residentPermitEnabled = true;

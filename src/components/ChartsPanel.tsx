@@ -93,6 +93,9 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown, simulation }: 
       ])
     ) as Record<string, { lowPercent: number; highPercent: number }>
   );
+  const [activeSensitivityLabel, setActiveSensitivityLabel] = useState<string>(
+    defaultSensitivityLevers[0]?.label ?? ""
+  );
   const tooltipFormatter = (value: unknown) =>
     formatCurrency(typeof value === "number" ? value : Number(value ?? 0));
   const activeCategories = Object.entries(breakdown).filter(([, value]) => value > 0);
@@ -137,6 +140,8 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown, simulation }: 
     1,
     ...baseSensitivity.flatMap((row) => [Math.abs(row.deltaLow), Math.abs(row.deltaHigh)])
   );
+  const activeSensitivityRow =
+    sensitivityRows.find((row) => row.label === activeSensitivityLabel) ?? sensitivityRows[0];
   const monteCarloCurve = buildDistributionCurve(simulation.samples);
   const driverHelp: Record<string, string> = {
     "Fast-charging price (DC)":
@@ -373,21 +378,46 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown, simulation }: 
         <div className="mb-4 rounded-2xl bg-white/4 px-4 py-3 text-sm leading-6 text-white/68">
           Use the sliders on each row to change the downside and upside shock. Example: setting insurance to `-8% / +20%` means the chart will recalculate TCO once with insurance `8%` lower and once with insurance `20%` higher, while everything else stays unchanged.
         </div>
-        <div className="space-y-4">
-          {sensitivityRows.map((row) => (
+        <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
+          Choose driver
+        </div>
+        <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {sensitivityRows.map((row) => {
+            const isActive = row.label === activeSensitivityRow?.label;
+            const spread = Math.abs(row.highValue - row.lowValue);
+            return (
+              <button
+                key={row.label}
+                type="button"
+                className={`rounded-[20px] border px-4 py-3 text-left transition ${
+                  isActive
+                    ? "border-accent-300/60 bg-accent-400/18 text-white shadow-[inset_0_0_0_1px_rgba(141,211,190,0.12)]"
+                    : "border-white/10 bg-white/4 text-white/72 hover:bg-white/6"
+                }`}
+                onClick={() => setActiveSensitivityLabel(row.label)}
+              >
+                <div className="text-sm font-semibold">{row.label}</div>
+                <div className="mt-2 text-[11px] uppercase tracking-[0.14em] text-white/45">
+                  spread {formatCurrency(spread)}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="rounded-[28px] border border-white/10 bg-white/3 p-1.5">
+          {activeSensitivityRow ? (
             <SensitivityRangeRow
-              key={row.label}
-              row={row}
+              row={activeSensitivityRow}
               maxDelta={sensitivityMaxDelta}
-              tweak={sensitivityTweaks[row.label]}
+              tweak={sensitivityTweaks[activeSensitivityRow.label]}
               onTweakChange={(next) =>
                 setSensitivityTweaks((current) => ({
                   ...current,
-                  [row.label]: next
+                  [activeSensitivityRow.label]: next
                 }))
               }
             />
-          ))}
+          ) : null}
         </div>
       </ChartCard>
 

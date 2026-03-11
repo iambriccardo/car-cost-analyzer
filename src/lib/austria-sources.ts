@@ -7,7 +7,12 @@ export const austriaSources = [
   {
     title: "Wien Energie charging tariffs",
     url: "https://www.wienenergie.at/privat/produkte/e-mobilitaet/unterwegs-laden/",
-    note: "Current official Wien Energie charging page used as the primary tariff reference. The app keeps AC/DC tariffs editable because real-world public charging mixes can land between Wien Energie network and partner-roaming prices."
+    note: "Current official Wien Energie charging page used as the primary tariff reference. The default AC baseline uses the tariff without a fixed monthly fee, while the default DC baseline is a Vienna-oriented blend between Wien Energie's own network and partner-roaming prices."
+  },
+  {
+    title: "Tesla Supercharger Vienna",
+    url: "https://www.tesla.com/findus/location/supercharger/wienbaumschulgassesupercharger",
+    note: "Tesla Supercharger pricing varies by site and time. The default Supercharger value is a practical Vienna baseline inferred from current Vienna Supercharger locations rather than a fixed statutory tariff."
   },
   {
     title: "Stadt Wien - Parkpickerl for residents",
