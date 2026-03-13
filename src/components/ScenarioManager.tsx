@@ -1,5 +1,7 @@
 import { Download, FileUp, Plus, Trash2, Copy, PencilLine, FileText } from "lucide-react";
 import type { SavedScenario } from "../lib/types";
+import { Button } from "./ui/button";
+import { Card, CardContent } from "./ui/card";
 
 type Props = {
   scenarios: SavedScenario[];
@@ -28,105 +30,70 @@ export function ScenarioManager({
   isExportingPdf = false,
   onImport
 }: Props) {
-  const activeScenario =
-    scenarios.find((scenario) => scenario.id === selectedId) ?? scenarios[0];
-
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500 dark:text-white/45">
-            Active scenario
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-ink-900 px-3.5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-ink-900"
-            onClick={onCreate}
-          >
-            <Plus className="h-4 w-4" />
-            New
-          </button>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-2">
+    <div className="space-y-2.5">
+      <div className="flex items-start gap-2.5">
+        <div className="min-w-0 flex-1 space-y-2">
           {scenarios.map((scenario) => {
             const active = scenario.id === selectedId;
             return (
-              <button
+              <Card
                 key={scenario.id}
-                type="button"
-                className={`w-full self-start rounded-[26px] border px-4 py-4 text-left transition ${
+                className={`w-full cursor-pointer self-start rounded-[16px] transition ${
                   active
-                    ? "border-accent-300/65 bg-accent-900/15 shadow-[inset_0_0_0_1px_rgba(141,211,190,0.12)]"
-                    : "border-white/10 bg-white/4 hover:bg-white/6"
+                    ? "border-primary/40 bg-accent/30 ring-1 ring-inset ring-primary/10"
+                    : "hover:bg-accent/20"
                 }`}
                 onClick={() => onSelect(scenario.id)}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-base font-semibold text-white">
-                      {scenario.name}
-                    </div>
-                    <div className="mt-1 line-clamp-2 text-sm leading-6 text-white/62">
-                      {scenario.notes}
-                    </div>
+                <CardContent className="px-4 py-2.5">
+                  <div className="truncate text-sm font-semibold text-foreground">
+                    {scenario.name}
                   </div>
-                  {active ? (
-                    <span className="rounded-full bg-accent-300/18 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-100">
-                      Live
-                    </span>
-                  ) : null}
-                </div>
-              </button>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
 
-        <div className="rounded-[24px] border border-white/10 bg-white/4 px-4 py-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
-            Current profile
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/68">
-            <span>{activeScenario.name}</span>
-            <span>{scenarios.length} saved</span>
-            <span>PDF + config export</span>
-          </div>
-        </div>
+        <Button type="button" size="sm" className="rounded-full" onClick={onCreate}>
+          <Plus className="h-3.5 w-3.5" />
+          New
+        </Button>
       </div>
 
-      <div className="grid gap-3 self-start sm:grid-cols-2 xl:grid-cols-1">
-        <ActionGroup title="Manage">
-          <ActionButton label="Duplicate" icon={<Copy className="h-4 w-4" />} onClick={onDuplicate} />
-          <ActionButton label="Rename" icon={<PencilLine className="h-4 w-4" />} onClick={onRename} />
-          <ActionButton label="Delete" icon={<Trash2 className="h-4 w-4" />} onClick={onDelete} />
-        </ActionGroup>
-
-        <ActionGroup title="Export">
-          <ActionButton label="Config" icon={<Download className="h-4 w-4" />} onClick={onExportConfig} />
-          <ActionButton
-            label={isExportingPdf ? "Exporting..." : "PDF"}
-            icon={<FileText className="h-4 w-4" />}
-            onClick={onExportPdf}
-            disabled={isExportingPdf}
-          />
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/8">
-            <FileUp className="h-4 w-4" />
-            Import
-            <input
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  onImport(file);
-                  event.currentTarget.value = "";
-                }
-              }}
+      <Card className="rounded-[16px]">
+        <CardContent className="p-2.5">
+          <div className="flex flex-nowrap gap-1.5 overflow-x-auto">
+            <ActionButton label="Duplicate" icon={<Copy className="h-4 w-4" />} onClick={onDuplicate} />
+            <ActionButton label="Rename" icon={<PencilLine className="h-4 w-4" />} onClick={onRename} />
+            <ActionButton label="Delete" icon={<Trash2 className="h-4 w-4" />} onClick={onDelete} />
+            <ActionButton label="Config" icon={<Download className="h-4 w-4" />} onClick={onExportConfig} />
+            <ActionButton
+              label={isExportingPdf ? "Exporting..." : "PDF"}
+              icon={<FileText className="h-4 w-4" />}
+              onClick={onExportPdf}
+              disabled={isExportingPdf}
             />
-          </label>
-        </ActionGroup>
-      </div>
+            <label className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 text-xs font-semibold text-foreground transition hover:bg-accent hover:text-accent-foreground">
+              <FileUp className="h-4 w-4" />
+              Import
+              <input
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) {
+                    onImport(file);
+                    event.currentTarget.value = "";
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -143,33 +110,15 @@ function ActionButton({
   disabled?: boolean;
 }) {
   return (
-    <button
+    <Button
       type="button"
-      className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/8 disabled:cursor-not-allowed disabled:opacity-60"
+      variant="outline"
+      className="h-8 shrink-0 rounded-lg bg-background px-2.5 text-xs"
       onClick={onClick}
       disabled={disabled}
     >
       {icon}
       {label}
-    </button>
-  );
-}
-
-function ActionGroup({
-  title,
-  children
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-[24px] border border-white/10 bg-white/4 p-3.5">
-      <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/45">
-        {title}
-      </div>
-      <div className="flex flex-wrap gap-2 xl:flex-col">
-        {children}
-      </div>
-    </div>
+    </Button>
   );
 }

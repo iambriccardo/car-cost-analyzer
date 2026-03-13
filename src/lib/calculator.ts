@@ -57,6 +57,17 @@ export const defaultSensitivityLevers = [
   }
 ] as const;
 
+const emptySimulationSummary = (): SimulationSummary => ({
+  p10: 0,
+  p50: 0,
+  p90: 0,
+  mean: 0,
+  min: 0,
+  max: 0,
+  samples: [],
+  drivers: []
+});
+
 const powerTaxPerMonth = (ratedPowerKw: number) => {
   const taxableKw = Math.max(10, ratedPowerKw - 45);
   const first = Math.min(35, taxableKw) * 0.25;
@@ -209,8 +220,18 @@ const computeExpectedResale = (
 export const calculateEstimate = (
   rawInput: EstimatorInput,
   caseMode: CaseMode = "base",
-  simulationIterations = 300
+  options: number | {
+    simulationIterations?: number;
+    includeSensitivity?: boolean;
+    includeSimulation?: boolean;
+  } = 300
 ): EstimatorResult => {
+  const simulationIterations =
+    typeof options === "number" ? options : (options.simulationIterations ?? 300);
+  const includeSensitivity = typeof options === "number" ? true : (options.includeSensitivity ?? true);
+  const includeSimulation = typeof options === "number"
+    ? simulationIterations > 0
+    : (options.includeSimulation ?? simulationIterations > 0);
   const core = calculateDeterministic(rawInput, caseMode);
   const {
     input,
@@ -224,13 +245,18 @@ export const calculateEstimate = (
     totalTco
   } = core;
   const netCostAfterResale = totalCashOutflow - estimatedResaleValue;
-  const sensitivity = calculateSensitivity(rawInput, caseMode);
-  const simulation = runSimulation(rawInput, caseMode, simulationIterations);
+  const roundedTotalTco = roundCurrency(totalTco);
+  const sensitivity = includeSensitivity
+    ? calculateSensitivity(rawInput, caseMode, undefined, roundedTotalTco)
+    : [];
+  const simulation = includeSimulation
+    ? runSimulation(rawInput, caseMode, simulationIterations)
+    : emptySimulationSummary();
   const taxes = deriveTaxSummary(input, annualMotorTax);
 
   return {
     metrics: {
-      totalTco: roundCurrency(totalTco),
+      totalTco: roundedTotalTco,
       monthlyEquivalent: roundCurrency(totalTco / (years * 12)),
       annualEquivalent: roundCurrency(totalTco / years),
       totalCashOutflow: roundCurrency(totalCashOutflow),
@@ -285,93 +311,81 @@ const calculateDeterministic = (
   const purchasePriceGross = derivePurchaseGross(input);
   const years = input.purchase.ownershipYears;
   const annualMotorTax = deriveMotorTaxAnnual(input);
-  const seasonalKmFactor =
-    1 + percentToDecimal(input.driving.seasonalUsageAdjustment);
-  const totalKmByYear = Array.from({ length: years }, (_, index) => {
-    const year = index + 1;
-    const mileageFactor =
-      (1 + percentToDecimal(input.driving.annualMileageChange)) ** (year - 1);
-    return (
-      input.driving.monthlyKm *
-      12 *
-      mileageFactor *
-      seasonalKmFactor
-    );
-  });
-  const saleYear = years;
-  const kmUntilResale = sum(totalKmByYear.slice(0, saleYear));
-  const estimatedResaleValue = computeExpectedResale(input, kmUntilResale);
+  const seasonalKmFactor = 1 + percentToDecimal(input.driving.seasonalUsageAdjustment);
+  const annualMileageFactor = 1 + percentToDecimal(input.driving.annualMileageChange);
+  const chargingInflationFactor = 1 + percentToDecimal(input.charging.energyPriceInflation);
+  const insuranceInflationFactor = 1 + percentToDecimal(input.insurance.premiumInflation);
+  const parkingInflationFactor = 1 + percentToDecimal(input.parking.parkingInflation);
+  const driveMixEfficiency = weightedAverage([
+    { weight: input.driving.cityShare, value: 0.94 },
+    { weight: input.driving.motorwayShare, value: 1.12 },
+    { weight: input.driving.mixedShare, value: 1 }
+  ]);
+  const energyUseFactor =
+    driveMixEfficiency *
+    (1 + percentToDecimal(input.charging.winterEfficiencyPenalty) * 0.45) *
+    (1 + percentToDecimal(input.charging.chargingLosses));
+  const blendedDcTariff = weightedAverage([
+    {
+      weight: input.charging.superchargerShare,
+      value: input.charging.superchargerTariff
+    },
+    {
+      weight: 100 - input.charging.superchargerShare,
+      value: input.charging.dcTariff
+    }
+  ]);
+  const baseEffectiveTariff = weightedAverage([
+    { weight: input.charging.acShare, value: input.charging.acTariff },
+    { weight: input.charging.dcShare, value: blendedDcTariff }
+  ]);
+  const baseParkingAnnual =
+    input.parking.monthlyParkingCost * 12 +
+    (input.parking.residentPermitEnabled ? input.parking.residentPermitAnnual : 0);
+  const baseInsuranceGrossAnnual = input.insurance.monthlyPremium * 12;
+  const estimatedResaleValue = computeExpectedResale(input, 0);
   const netVehicleCost = Math.max(0, purchasePriceGross - estimatedResaleValue);
   const yearly: YearlyCostRow[] = [];
   let operatingCashOutflow = 0;
   let totalKm = 0;
+  let annualKm = input.driving.monthlyKm * 12 * seasonalKmFactor;
+  let chargingInflationMultiplier = 1;
+  let insuranceInflationMultiplier = 1;
+  let parkingInflationMultiplier = 1;
+  const depreciationShare = netVehicleCost / Math.max(years, 1);
+  let cumulative = 0;
 
   for (let year = 1; year <= years; year += 1) {
-    const ownsCarThisYear = year <= saleYear;
-    const annualKm = ownsCarThisYear ? totalKmByYear[year - 1] : 0;
-    totalKm += annualKm;
-
-    const driveMixEfficiency = weightedAverage([
-      { weight: input.driving.cityShare, value: 0.94 },
-      { weight: input.driving.motorwayShare, value: 1.12 },
-      { weight: input.driving.mixedShare, value: 1 }
-    ]);
+    const ownsCarThisYear = year <= years;
+    const currentAnnualKm = ownsCarThisYear ? annualKm : 0;
+    totalKm += currentAnnualKm;
 
     const yearEnergyKwh =
-      (annualKm / 100) *
+      (currentAnnualKm / 100) *
       input.charging.consumptionKwhPer100Km *
-      driveMixEfficiency *
-      (1 + percentToDecimal(input.charging.winterEfficiencyPenalty) * 0.45) *
-      (1 + percentToDecimal(input.charging.chargingLosses));
+      energyUseFactor;
 
-    const yearAcPrice =
-      input.charging.acTariff *
-      (1 + percentToDecimal(input.charging.energyPriceInflation)) ** (year - 1);
-    const yearDcPrice =
-      weightedAverage([
-        {
-          weight: input.charging.superchargerShare,
-          value: input.charging.superchargerTariff
-        },
-        {
-          weight: 100 - input.charging.superchargerShare,
-          value: input.charging.dcTariff
-        }
-      ]) *
-      (1 + percentToDecimal(input.charging.energyPriceInflation)) ** (year - 1);
-
-    const effectiveTariff = weightedAverage([
-      { weight: input.charging.acShare, value: yearAcPrice },
-      { weight: input.charging.dcShare, value: yearDcPrice }
-    ]);
+    const effectiveTariff = baseEffectiveTariff * chargingInflationMultiplier;
     const annualChargingFees =
-      input.charging.idleFeesAnnual *
-      (1 + percentToDecimal(input.charging.energyPriceInflation)) ** (year - 1);
+      input.charging.idleFeesAnnual * chargingInflationMultiplier;
     const chargingCost = ownsCarThisYear
       ? yearEnergyKwh * effectiveTariff + annualChargingFees
       : 0;
 
     const annualInsuranceGross = ownsCarThisYear
-      ? input.insurance.monthlyPremium *
-        12 *
-        (1 + percentToDecimal(input.insurance.premiumInflation)) ** (year - 1)
+      ? baseInsuranceGrossAnnual * insuranceInflationMultiplier
       : 0;
     const annualInsuranceNet = input.insurance.includesMotorTax
       ? Math.max(0, annualInsuranceGross - annualMotorTax)
       : annualInsuranceGross;
     const insuranceAndTax = ownsCarThisYear ? annualInsuranceNet + annualMotorTax : 0;
 
-    const permitCost = input.parking.residentPermitEnabled
-      ? input.parking.residentPermitAnnual
-      : 0;
     const parking = ownsCarThisYear
-      ? (input.parking.monthlyParkingCost * 12 +
-          permitCost) *
-        (1 + percentToDecimal(input.parking.parkingInflation)) ** (year - 1)
+      ? baseParkingAnnual * parkingInflationMultiplier
       : 0;
-    const depreciationShare = ownsCarThisYear ? netVehicleCost / Math.max(saleYear, 1) : 0;
     const purchaseAndDepreciation =
-      depreciationShare + (year === 1 ? input.purchase.registrationCosts : 0);
+      (ownsCarThisYear ? depreciationShare : 0) +
+      (year === 1 ? input.purchase.registrationCosts : 0);
 
     const yearCashOutflow = sum([
       year === 1 ? input.purchase.registrationCosts : 0,
@@ -381,6 +395,8 @@ const calculateDeterministic = (
     ]);
     operatingCashOutflow += yearCashOutflow;
 
+    cumulative +=
+      purchaseAndDepreciation + insuranceAndTax + parking + chargingCost;
     const yearRow: YearlyCostRow = {
       year,
       purchaseAndDepreciation: roundCurrency(purchaseAndDepreciation),
@@ -388,8 +404,8 @@ const calculateDeterministic = (
       parking: roundCurrency(parking),
       charging: roundCurrency(chargingCost),
       total: 0,
-      cumulative: 0,
-      kmDriven: roundCurrency(annualKm),
+      cumulative: roundCurrency(cumulative),
+      kmDriven: roundCurrency(currentAnnualKm),
       energyKwh: roundCurrency(yearEnergyKwh)
     };
     yearRow.total = roundCurrency(
@@ -398,11 +414,12 @@ const calculateDeterministic = (
         yearRow.parking +
         yearRow.charging
     );
-    yearRow.cumulative = roundCurrency(
-      (yearly.at(-1)?.cumulative ?? 0) + yearRow.total
-    );
 
     yearly.push(yearRow);
+    annualKm *= annualMileageFactor;
+    chargingInflationMultiplier *= chargingInflationFactor;
+    insuranceInflationMultiplier *= insuranceInflationFactor;
+    parkingInflationMultiplier *= parkingInflationFactor;
   }
 
   const breakdown = yearly.reduce<CategoryBreakdown>(
@@ -442,27 +459,33 @@ const modifyInput = (
   path: string,
   factor: number
 ): EstimatorInput => {
-  const clone = structuredClone(input);
   const [section, field] = path.split(".");
-  const sectionRecord = clone[section as keyof EstimatorInput] as Record<string, unknown>;
+  const sectionKey = section as keyof EstimatorInput;
+  const sectionRecord = input[sectionKey] as Record<string, unknown>;
   const current = sectionRecord[field] as number;
-  sectionRecord[field] = current * factor;
-  return clone;
+  return {
+    ...input,
+    [sectionKey]: {
+      ...sectionRecord,
+      [field]: current * factor
+    }
+  } as EstimatorInput;
 };
 
 export const calculateSensitivity = (
   input: EstimatorInput,
   caseMode: CaseMode,
-  overrides?: Partial<Record<(typeof defaultSensitivityLevers)[number]["label"], { lowFactor: number; highFactor: number }>>
+  overrides?: Partial<Record<(typeof defaultSensitivityLevers)[number]["label"], { lowFactor: number; highFactor: number }>>,
+  baseValueOverride?: number
 ): SensitivityPoint[] => {
-  const baseValue = calculateEstimateCore(input, caseMode);
+  const baseValue = baseValueOverride ?? calculateEstimateCore(input, caseMode);
+  const roundedBaseValue = roundCurrency(baseValue);
 
   return defaultSensitivityLevers.map(({ label, path, lowFactor, highFactor }) => {
     const activeLowFactor = overrides?.[label]?.lowFactor ?? lowFactor;
     const activeHighFactor = overrides?.[label]?.highFactor ?? highFactor;
     const low = calculateEstimateCore(modifyInput(input, path, activeLowFactor), caseMode);
     const high = calculateEstimateCore(modifyInput(input, path, activeHighFactor), caseMode);
-    const roundedBaseValue = roundCurrency(baseValue);
     const roundedLowValue = roundCurrency(low);
     const roundedHighValue = roundCurrency(high);
     return {
@@ -513,109 +536,132 @@ const gaussian = () => {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 };
 
-const runSimulation = (
+export const calculateSimulation = (
   input: EstimatorInput,
   caseMode: CaseMode,
   iterations: number
 ): SimulationSummary => {
   if (iterations <= 0) {
-    return {
-      p10: 0,
-      p50: 0,
-      p90: 0,
-      mean: 0,
-      min: 0,
-      max: 0,
-      samples: [],
-      drivers: []
-    };
+    return emptySimulationSummary();
   }
 
   const samples: number[] = [];
-  const driverScores = new Map<string, number[]>();
+  let sampleTotal = 0;
+  let sampleMin = Number.POSITIVE_INFINITY;
+  let sampleMax = Number.NEGATIVE_INFINITY;
+  const driverScores: Record<string, number[]> = {
+    "Fast-charging price (DC)": [],
+    "Annual distance driven": [],
+    "Residual value assumption": [],
+    "Slow-charging price (AC)": [],
+    "Energy price inflation": [],
+    "Insurance premium inflation": [],
+    "Charging losses": [],
+    "Winter efficiency penalty": [],
+    "Parking inflation": [],
+    "Annual mileage growth": [],
+    "Tesla Supercharger tariff": []
+  };
   for (let i = 0; i < iterations; i += 1) {
-    const sample = structuredClone(input);
-    sample.charging.dcTariff = clamp(
-      sample.charging.dcTariff * (1 + gaussian() * 0.1),
-      0.3,
-      1.2
-    );
-    sample.charging.acTariff = clamp(
-      sample.charging.acTariff * (1 + gaussian() * 0.08),
-      0.2,
-      0.9
-    );
-    sample.charging.superchargerTariff = clamp(
-      sample.charging.superchargerTariff * (1 + gaussian() * 0.08),
-      0.2,
-      1
-    );
-    sample.charging.energyPriceInflation = clamp(
-      sample.charging.energyPriceInflation + gaussian() * 1,
-      0,
-      12
-    );
-    sample.charging.chargingLosses = clamp(
-      sample.charging.chargingLosses + gaussian() * 1.5,
-      0,
-      25
-    );
-    sample.charging.winterEfficiencyPenalty = clamp(
-      sample.charging.winterEfficiencyPenalty + gaussian() * 2,
-      0,
-      25
-    );
-    sample.driving.monthlyKm = clamp(
-      sample.driving.monthlyKm * (1 + gaussian() * 0.1),
-      300,
-      4000
-    );
-    sample.driving.annualMileageChange = clamp(
-      sample.driving.annualMileageChange + gaussian() * 1.25,
-      -10,
-      15
-    );
-    sample.insurance.premiumInflation = clamp(
-      sample.insurance.premiumInflation + gaussian() * 0.8,
-      0,
-      10
-    );
-    sample.parking.parkingInflation = clamp(
-      sample.parking.parkingInflation + gaussian() * 0.6,
-      0,
-      8
-    );
-    sample.purchase.expectedResalePercent = clamp(
-      sample.purchase.expectedResalePercent + gaussian() * 4.5,
-      15,
-      80
-    );
+    const charging = {
+      ...input.charging,
+      dcTariff: clamp(
+        input.charging.dcTariff * (1 + gaussian() * 0.1),
+        0.3,
+        1.2
+      ),
+      acTariff: clamp(
+        input.charging.acTariff * (1 + gaussian() * 0.08),
+        0.2,
+        0.9
+      ),
+      superchargerTariff: clamp(
+        input.charging.superchargerTariff * (1 + gaussian() * 0.08),
+        0.2,
+        1
+      ),
+      energyPriceInflation: clamp(
+        input.charging.energyPriceInflation + gaussian() * 1,
+        0,
+        12
+      ),
+      chargingLosses: clamp(
+        input.charging.chargingLosses + gaussian() * 1.5,
+        0,
+        25
+      ),
+      winterEfficiencyPenalty: clamp(
+        input.charging.winterEfficiencyPenalty + gaussian() * 2,
+        0,
+        25
+      )
+    };
+    const driving = {
+      ...input.driving,
+      monthlyKm: clamp(
+        input.driving.monthlyKm * (1 + gaussian() * 0.1),
+        300,
+        4000
+      ),
+      annualMileageChange: clamp(
+        input.driving.annualMileageChange + gaussian() * 1.25,
+        -10,
+        15
+      )
+    };
+    const insurance = {
+      ...input.insurance,
+      premiumInflation: clamp(
+        input.insurance.premiumInflation + gaussian() * 0.8,
+        0,
+        10
+      )
+    };
+    const parking = {
+      ...input.parking,
+      parkingInflation: clamp(
+        input.parking.parkingInflation + gaussian() * 0.6,
+        0,
+        8
+      )
+    };
+    const purchase = {
+      ...input.purchase,
+      expectedResalePercent: clamp(
+        input.purchase.expectedResalePercent + gaussian() * 4.5,
+        15,
+        80
+      )
+    };
+    const sample: EstimatorInput = {
+      ...input,
+      purchase,
+      insurance,
+      parking,
+      driving,
+      charging
+    };
     const tco = calculateEstimateCore(sample, caseMode);
     samples.push(tco);
+    sampleTotal += tco;
+    sampleMin = Math.min(sampleMin, tco);
+    sampleMax = Math.max(sampleMax, tco);
 
-    const contributions = [
-      ["Fast-charging price (DC)", sample.charging.dcTariff],
-      ["Annual distance driven", sample.driving.monthlyKm],
-      ["Residual value assumption", sample.purchase.expectedResalePercent],
-      ["Slow-charging price (AC)", sample.charging.acTariff],
-      ["Energy price inflation", sample.charging.energyPriceInflation],
-      ["Insurance premium inflation", sample.insurance.premiumInflation],
-      ["Charging losses", sample.charging.chargingLosses],
-      ["Winter efficiency penalty", sample.charging.winterEfficiencyPenalty],
-      ["Parking inflation", sample.parking.parkingInflation],
-      ["Annual mileage growth", sample.driving.annualMileageChange],
-      ["Tesla Supercharger tariff", sample.charging.superchargerTariff]
-    ] as const;
-
-    contributions.forEach(([label, value]) => {
-      const existing = driverScores.get(label) ?? [];
-      existing.push(value);
-      driverScores.set(label, existing);
-    });
+    driverScores["Fast-charging price (DC)"].push(charging.dcTariff);
+    driverScores["Annual distance driven"].push(driving.monthlyKm);
+    driverScores["Residual value assumption"].push(purchase.expectedResalePercent);
+    driverScores["Slow-charging price (AC)"].push(charging.acTariff);
+    driverScores["Energy price inflation"].push(charging.energyPriceInflation);
+    driverScores["Insurance premium inflation"].push(insurance.premiumInflation);
+    driverScores["Charging losses"].push(charging.chargingLosses);
+    driverScores["Winter efficiency penalty"].push(charging.winterEfficiencyPenalty);
+    driverScores["Parking inflation"].push(parking.parkingInflation);
+    driverScores["Annual mileage growth"].push(driving.annualMileageChange);
+    driverScores["Tesla Supercharger tariff"].push(charging.superchargerTariff);
   }
 
-  const mean = average(samples);
-  const drivers = [...driverScores.entries()]
+  const mean = sampleTotal / samples.length;
+  const drivers = Object.entries(driverScores)
     .map(([label, values]) => ({
       label,
       score: Math.abs(correlation(values, samples))
@@ -627,9 +673,11 @@ const runSimulation = (
     p50: roundCurrency(percentile(samples, 0.5)),
     p90: roundCurrency(percentile(samples, 0.9)),
     mean: roundCurrency(mean),
-    min: roundCurrency(Math.min(...samples)),
-    max: roundCurrency(Math.max(...samples)),
+    min: roundCurrency(sampleMin),
+    max: roundCurrency(sampleMax),
     samples,
     drivers
   };
 };
+
+const runSimulation = calculateSimulation;

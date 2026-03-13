@@ -1,3 +1,10 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 export const percentToDecimal = (value: number) => value / 100;
 
 export const clamp = (value: number, min: number, max: number) =>

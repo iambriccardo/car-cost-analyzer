@@ -5,7 +5,7 @@ export const STORAGE_VERSION = 6;
 export const defaultInput: EstimatorInput = {
   meta: {
     vehicleName: "Model 3 standard",
-    city: "Vienna",
+    city: "Austria",
     currency: "EUR"
   },
   purchase: {
@@ -55,7 +55,7 @@ export const exampleScenarios: SavedScenario[] = [
   {
     id: "vienna-base-profile",
     name: "Model 3 standard",
-    notes: "Single starter scenario: cash purchase, 1,000 km/month, Vienna public charging baseline, 100 EUR/month private parking, and Parkpickerl enabled.",
+    notes: "Single starter scenario: cash purchase, 1,000 km/month, Austrian EV baseline with Vienna public charging defaults, 100 EUR/month private parking, and resident permit enabled.",
     version: STORAGE_VERSION,
     createdAt: new Date("2026-03-10T09:00:00Z").toISOString(),
     updatedAt: new Date("2026-03-10T09:00:00Z").toISOString(),

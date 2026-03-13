@@ -13,12 +13,15 @@ import type {
 } from "./types";
 
 const colors = {
-  ink: [17, 24, 39] as [number, number, number],
-  slate: [71, 85, 105] as [number, number, number],
-  accent: [50, 143, 122] as [number, number, number],
-  warm: [230, 179, 90] as [number, number, number],
-  panel: [244, 247, 250] as [number, number, number],
-  border: [221, 229, 237] as [number, number, number]
+  page: [255, 255, 255] as [number, number, number],
+  surface: [255, 255, 255] as [number, number, number],
+  surfaceAlt: [248, 250, 252] as [number, number, number],
+  surfaceStrong: [239, 246, 255] as [number, number, number],
+  border: [226, 232, 240] as [number, number, number],
+  text: [15, 23, 42] as [number, number, number],
+  muted: [100, 116, 139] as [number, number, number],
+  primary: [37, 99, 235] as [number, number, number],
+  primarySoft: [219, 234, 254] as [number, number, number]
 };
 
 const getValue = (scenario: SavedScenario, path: string) => {
@@ -76,21 +79,114 @@ const setFillColor = (doc: jsPDF, color: readonly [number, number, number]) => {
   doc.setFillColor(color[0], color[1], color[2]);
 };
 
-const drawPageHeader = (doc: jsPDF, title: string, subtitle: string) => {
+const setDrawColor = (doc: jsPDF, color: readonly [number, number, number]) => {
+  doc.setDrawColor(color[0], color[1], color[2]);
+};
+
+const paintPage = (doc: jsPDF) => {
+  setFillColor(doc, colors.page);
+  doc.rect(0, 0, 210, 297, "F");
+};
+
+const drawSurface = (
+  doc: jsPDF,
+  {
+    x,
+    y,
+    w,
+    h,
+    fill = colors.surface,
+    radius = 5,
+    stroke = true
+  }: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    fill?: readonly [number, number, number];
+    radius?: number;
+    stroke?: boolean;
+  }
+) => {
+  setFillColor(doc, fill);
+  setDrawColor(doc, colors.border);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(x, y, w, h, radius, radius, stroke ? "FD" : "F");
+};
+
+const drawPill = (
+  doc: jsPDF,
+  {
+    x,
+    y,
+    text,
+    fill = colors.surfaceAlt,
+    color = colors.text,
+    width
+  }: {
+    x: number;
+    y: number;
+    text: string;
+    fill?: readonly [number, number, number];
+    color?: readonly [number, number, number];
+    width?: number;
+  }
+) => {
+  const w = width ?? Math.max(24, text.length * 2.1 + 10);
+  setFillColor(doc, fill);
+  doc.roundedRect(x, y, w, 8, 4, 4, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  setTextColor(doc, colors.ink);
-  doc.text(title, 16, 20);
+  doc.setFontSize(8.2);
+  setTextColor(doc, color);
+  doc.text(text.toUpperCase(), x + w / 2, y + 5.2, { align: "center" });
+  return w;
+};
+
+const drawPageHeader = (
+  doc: jsPDF,
+  title: string,
+  subtitle: string,
+  pageTag?: string
+) => {
+  paintPage(doc);
+  drawPill(doc, {
+    x: 18,
+    y: 14,
+    text: "Austria EV TCO",
+    fill: colors.primarySoft,
+    color: colors.primary,
+    width: 34
+  });
+  if (pageTag) {
+    drawPill(doc, {
+      x: 166,
+      y: 14,
+      text: pageTag,
+      fill: colors.surfaceAlt,
+      color: colors.muted,
+      width: 24
+    });
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  setTextColor(doc, colors.text);
+  doc.text(title, 16, 31);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  setTextColor(doc, colors.slate);
-  doc.text(subtitle, 16, 27);
+  doc.setFontSize(9.5);
+  setTextColor(doc, colors.muted);
+  const subtitleLines = doc.splitTextToSize(subtitle, 178);
+  doc.text(subtitleLines, 16, 38);
+  const headerBottom = 38 + subtitleLines.length * 4.6;
+  setDrawColor(doc, colors.border);
+  doc.setLineWidth(0.35);
+  doc.line(16, headerBottom + 4, 194, headerBottom + 4);
+  return headerBottom + 10;
 };
 
 const drawSectionLabel = (doc: jsPDF, label: string, y: number) => {
-  setTextColor(doc, colors.accent);
+  setTextColor(doc, colors.primary);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(9.4);
   doc.text(label.toUpperCase(), 16, y);
 };
 
@@ -102,7 +198,7 @@ const drawInfoBox = (
     w = 178,
     title,
     body,
-    fill = colors.panel
+    fill = colors.surface
   }: {
     x?: number;
     y: number;
@@ -113,17 +209,16 @@ const drawInfoBox = (
   }
 ) => {
   const lines = doc.splitTextToSize(body, w - 10);
-  const height = 14 + lines.length * 5.2;
-  setFillColor(doc, fill);
-  doc.roundedRect(x, y, w, height, 4, 4, "F");
+  const height = 13 + lines.length * 4.9;
+  drawSurface(doc, { x, y, w, h: height, fill });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  setTextColor(doc, colors.ink);
+  doc.setFontSize(9.6);
+  setTextColor(doc, colors.text);
   doc.text(title, x + 5, y + 7);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9.5);
-  setTextColor(doc, colors.slate);
-  doc.text(lines, x + 5, y + 13);
+  doc.setFontSize(9);
+  setTextColor(doc, colors.muted);
+  doc.text(lines, x + 5, y + 12.5);
   return y + height;
 };
 
@@ -145,14 +240,21 @@ const drawMetricCard = (
     strong?: boolean;
   }
 ) => {
-  setFillColor(doc, strong ? colors.ink : colors.panel);
-  doc.roundedRect(x, y, w, 24, 4, 4, "F");
+  drawSurface(doc, {
+    x,
+    y,
+    w,
+    h: 24,
+    fill: strong ? colors.surfaceStrong : colors.surface
+  });
+  setFillColor(doc, strong ? colors.primary : colors.surfaceAlt);
+  doc.roundedRect(x + 4, y + 4, strong ? 22 : 16, 3.2, 1.6, 1.6, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
-  setTextColor(doc, strong ? [220, 231, 239] : colors.slate);
+  setTextColor(doc, colors.muted);
   doc.text(label.toUpperCase(), x + 4, y + 7);
   doc.setFontSize(strong ? 18 : 14);
-  setTextColor(doc, strong ? [255, 255, 255] : colors.ink);
+  setTextColor(doc, colors.text);
   doc.text(value, x + 4, y + 17);
 };
 
@@ -207,39 +309,39 @@ const getSuggestions = (scenario: SavedScenario, result: EstimatorResult) => {
 
   if (biggest === "Car and depreciation") {
     suggestions.push(
-      "The largest cost driver is vehicle depreciation. If you want to materially lower TCO, the most important assumption to challenge is the resale percentage rather than small operating-cost tweaks."
+      "Depreciation is the biggest driver here. If you want to materially improve TCO, challenge the resale assumption before fine-tuning smaller operating inputs."
     );
   }
   if (biggest === "Insurance and tax") {
     suggestions.push(
-      "Insurance and tax are currently the largest fixed drag. Validate the renewal path and compare at least one alternative quote, because this bucket compounds every year."
+      "Insurance and tax are the biggest fixed drag in this scenario. A better quote or a flatter renewal path can move the outcome more than small efficiency tweaks."
     );
   }
   if (biggest === "Parking") {
     suggestions.push(
-      "Parking is currently a major fixed cost. If your real-world parking setup could change, this is one of the easiest levers to test because it does not depend on kilometres driven."
+      "Parking is a major fixed cost. If your actual parking setup may change, this is one of the easiest levers to test because it does not depend on kilometres driven."
     );
   }
   if (result.breakdown.charging > result.breakdown.parking * 0.8) {
     suggestions.push(
-      "Charging is a meaningful share of cost. Check whether the AC/DC mix and Tesla Supercharger share reflect your actual routine, because those assumptions move the result more than small efficiency tweaks."
+      "Charging is a meaningful share of cost. Validate the AC/DC split and Supercharger share against your real routine, because those assumptions move the result more than minor consumption tweaks."
     );
   }
 
   const topSensitivity = getTopSensitivity(result.sensitivity)[0];
   if (topSensitivity) {
     suggestions.push(
-      `The most sensitive single assumption in this scenario is "${topSensitivity.label}". If you are validating the model manually, start there before fine-tuning smaller inputs.`
+      `The most sensitive single assumption in this scenario is "${topSensitivity.label}". Validate that input first before refining lower-impact fields.`
     );
   }
 
   if (scenario.input.purchase.ownershipYears >= 8) {
     suggestions.push(
-      "A long ownership horizon makes insurance inflation, parking inflation, and charging-price inflation matter more. For long-hold scenarios, focus on recurring-cost realism more than launch-year prices."
+      "Longer ownership makes recurring-cost inflation matter more. For long-hold scenarios, focus on insurance, parking, and charging inflation realism as much as the launch-year numbers."
     );
   }
 
-  return suggestions.slice(0, 4);
+  return suggestions.slice(0, 3);
 };
 
 const drawRecommendations = (
@@ -256,7 +358,7 @@ const drawRecommendations = (
       y: currentY,
       title: "Recommendation",
       body: item,
-      fill: [236, 244, 241]
+      fill: colors.surfaceAlt
     }) + 4;
   });
   return currentY;
@@ -266,17 +368,44 @@ const addFooters = (doc: jsPDF) => {
   const pages = doc.getNumberOfPages();
   for (let index = 1; index <= pages; index += 1) {
     doc.setPage(index);
-    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+    setDrawColor(doc, colors.border);
     doc.line(16, 287, 194, 287);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    setTextColor(doc, colors.slate);
-    doc.text("Vienna EV TCO", 16, 292);
+    setTextColor(doc, colors.muted);
+    doc.text("Austria EV TCO", 16, 292);
     doc.text(`Page ${index} of ${pages}`, 194, 292, { align: "right" });
   }
 };
 
-export const exportScenarioPdf = ({
+const getTableTheme = () => ({
+  theme: "grid" as const,
+  margin: { left: 16, right: 16 },
+  styles: {
+    fontSize: 8.5,
+    cellPadding: 2.8,
+    lineColor: colors.border,
+    lineWidth: 0.22,
+    textColor: colors.text,
+    fillColor: colors.surface
+  },
+  headStyles: {
+    fillColor: colors.primarySoft,
+    textColor: colors.text,
+    fontStyle: "bold" as const,
+    lineColor: colors.border,
+    lineWidth: 0.22
+  },
+  bodyStyles: {
+    fillColor: colors.surface,
+    textColor: colors.text
+  },
+  alternateRowStyles: {
+    fillColor: colors.surfaceAlt
+  }
+});
+
+export const buildScenarioPdfDoc = ({
   scenario,
   result,
   caseMode
@@ -295,30 +424,17 @@ export const exportScenarioPdf = ({
     ])
   );
 
-  setFillColor(doc, colors.ink);
-  doc.rect(0, 0, 210, 54, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  setTextColor(doc, [255, 255, 255]);
-  doc.text("Vienna EV TCO Report", 16, 20);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  setTextColor(doc, [218, 227, 235]);
-  doc.text(
-    `Generated ${new Date().toLocaleString("de-AT")}  |  ${scenario.input.purchase.ownershipYears}-year horizon  |  ${caseMode} case`,
-    16,
-    29
-  );
-  doc.text(
-    "A local-first decision report focused on purchase, insurance and tax, parking, charging, and resale.",
-    16,
-    36
+  const firstPageStart = drawPageHeader(
+    doc,
+    "Austria EV TCO Report",
+    `Generated ${new Date().toLocaleString("de-AT")} | ${scenario.input.purchase.ownershipYears}-year horizon | ${caseMode} case`,
+    `${scenario.input.purchase.ownershipYears}Y`
   );
 
-  drawSectionLabel(doc, "Executive summary", 64);
-  drawMetricGrid(doc, result, 69);
+  drawSectionLabel(doc, "Executive summary", firstPageStart);
+  drawMetricGrid(doc, result, firstPageStart + 6);
   let y = drawInfoBox(doc, {
-    y: 132,
+    y: firstPageStart + 68,
     title: "How to read this report",
     body:
       "The headline TCO is the net ownership cost over the selected horizon after crediting the resale value at the end. The model assumes a cash purchase and keeps the active scope intentionally narrow so every visible input maps directly into the result."
@@ -334,123 +450,102 @@ export const exportScenarioPdf = ({
   drawRecommendations(doc, scenario, result, y + 8);
 
   doc.addPage();
-  drawPageHeader(
+  let contentStart = drawPageHeader(
     doc,
     "Active assumptions",
-    "Editable inputs used in the current scenario. The resale point is the same as the selected TCO horizon."
+    "Editable inputs used in the current scenario. The resale point is the same as the selected TCO horizon.",
+    "Inputs"
   );
-  let currentY = 34;
+  let currentY = contentStart;
   fieldGroups.forEach((group, index) => {
     autoTable(doc, {
+      ...getTableTheme(),
       startY: currentY,
-      theme: "grid",
       head: [[group.title, "Value"]],
       body: group.fields.map((field) => [
         field.label,
         formatFieldValue(field, getValue(scenario, field.path))
-      ]),
-      styles: {
-        fontSize: 8.7,
-        cellPadding: 2.8,
-        lineColor: colors.border,
-        lineWidth: 0.2,
-        textColor: colors.ink
-      },
-      headStyles: {
-        fillColor: colors.accent,
-        textColor: [255, 255, 255],
-        fontStyle: "bold"
-      },
-      alternateRowStyles: { fillColor: [249, 251, 252] }
+      ])
     });
     currentY =
       ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ??
         currentY) + 8;
     if (index < fieldGroups.length - 1 && currentY > 250) {
       doc.addPage();
-      drawPageHeader(doc, "Active assumptions", "Continued");
-      currentY = 34;
+      currentY = drawPageHeader(doc, "Active assumptions", "Continued", "Inputs");
     }
   });
 
   doc.addPage();
-  drawPageHeader(
+  contentStart = drawPageHeader(
     doc,
     "Tax view",
-    "Austrian registration and motor-tax treatment shown in the same simplified scope as the app."
+    "Austrian registration and motor-tax treatment shown in the same simplified scope as the app.",
+    "Tax"
   );
-  drawInfoBox(doc, {
-    y: 34,
+  const taxIntroBottom = drawInfoBox(doc, {
+    y: contentStart,
     title: "Interpretation",
     body:
       "Registration is treated as the only one-off initial fee in the active model. The motorbezogene Versicherungssteuer is derived from the 30-minute power and vehicle mass, and is shown separately even when your insurance quote already includes it."
   });
   autoTable(doc, {
-    startY: 58,
-    theme: "grid",
+    ...getTableTheme(),
+    startY: taxIntroBottom + 8,
     head: [["Initial item", "Value"]],
     body: [
       ["Registration fees", formatCurrency(result.taxes.initial.registrationFees)],
       ["Initial fees total", formatCurrency(result.taxes.initial.totalInitialTaxesAndFees)]
-    ],
-    styles: {
-      fontSize: 8.8,
-      cellPadding: 2.8,
-      lineColor: colors.border,
-      lineWidth: 0.2
-    },
-    headStyles: { fillColor: colors.accent, textColor: [255, 255, 255] }
+    ]
   });
   autoTable(doc, {
+    ...getTableTheme(),
     startY:
       ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 58) + 8,
-    theme: "grid",
     head: [["Ongoing tax and insurance split", "Value"]],
     body: [
-      ["Insurance premium gross / year", formatCurrency(result.taxes.ongoing.insurancePremiumGrossAnnual)],
-      ["Insurance premium net of motor tax / year", formatCurrency(result.taxes.ongoing.insurancePremiumNetOfMotorTaxAnnual)],
+      [
+        "Insurance premium gross / year",
+        formatCurrency(result.taxes.ongoing.insurancePremiumGrossAnnual)
+      ],
+      [
+        "Insurance premium net of motor tax / year",
+        formatCurrency(result.taxes.ongoing.insurancePremiumNetOfMotorTaxAnnual)
+      ],
       ["Motor tax / month", formatCurrency(result.taxes.ongoing.motorTaxMonthly, true)],
       ["Motor tax / year", formatCurrency(result.taxes.ongoing.motorTaxAnnual)],
       ["Motor tax over horizon", formatCurrency(result.taxes.ongoing.horizonMotorTaxTotal)]
-    ],
-    styles: {
-      fontSize: 8.8,
-      cellPadding: 2.8,
-      lineColor: colors.border,
-      lineWidth: 0.2
-    },
-    headStyles: { fillColor: colors.ink, textColor: [255, 255, 255] }
+    ]
   });
   autoTable(doc, {
+    ...getTableTheme(),
     startY:
       ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 120) + 8,
-    theme: "striped",
     head: [["Formula", "Expression", "Meaning"]],
     body: result.taxes.formulas.map((item) => [item.label, item.expression, item.value]),
     styles: {
+      ...getTableTheme().styles,
       fontSize: 8.4,
-      cellPadding: 2.6,
-      textColor: colors.ink
-    },
-    headStyles: { fillColor: colors.accent, textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [249, 251, 252] }
+      cellPadding: 2.6
+    }
   });
 
   doc.addPage();
-  drawPageHeader(
+  contentStart = drawPageHeader(
     doc,
     "Cost path",
-    "Year-by-year build-up of ownership cost across the selected horizon."
+    "Year-by-year build-up of ownership cost across the selected horizon.",
+    "Timeline"
   );
-  drawInfoBox(doc, {
-    y: 34,
+  const timelineIntroBottom = drawInfoBox(doc, {
+    y: contentStart,
     title: "Interpretation",
     body:
       "The yearly path helps validate whether costs rise in the way you expect. Purchase and depreciation are front-loaded, while insurance, parking, and charging build through recurring annual spend and inflation."
   });
   autoTable(doc, {
-    startY: 60,
-    theme: "grid",
+    ...getTableTheme(),
+    startY: timelineIntroBottom + 8,
     head: [["Year", "Purchase", "Insurance", "Parking", "Charging", "Total", "Cumulative"]],
     body: result.yearly.map((row) => [
       row.year,
@@ -462,18 +557,15 @@ export const exportScenarioPdf = ({
       formatCurrency(row.cumulative)
     ]),
     styles: {
+      ...getTableTheme().styles,
       fontSize: 8.4,
-      cellPadding: 2.5,
-      lineColor: colors.border,
-      lineWidth: 0.2
-    },
-    headStyles: { fillColor: colors.ink, textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [249, 251, 252] }
+      cellPadding: 2.5
+    }
   });
   autoTable(doc, {
+    ...getTableTheme(),
     startY:
       ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 130) + 10,
-    theme: "striped",
     head: [["Cost bucket", "Total over horizon", "Why it matters"]],
     body: [
       [
@@ -489,38 +581,32 @@ export const exportScenarioPdf = ({
       [
         "Parking",
         formatCurrency(result.breakdown.parking),
-        "This includes private parking plus Parkpickerl when enabled."
+        "This includes private parking plus the resident permit when enabled."
       ],
       [
         "Charging",
         formatCurrency(result.breakdown.charging),
         "This is driven by kilometres, consumption, charging losses, winter penalty, AC/DC split, tariffs, and charging-price inflation."
       ]
-    ],
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 2.6,
-      textColor: colors.ink
-    },
-    headStyles: { fillColor: colors.accent, textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [249, 251, 252] }
+    ]
   });
 
   doc.addPage();
-  drawPageHeader(
+  contentStart = drawPageHeader(
     doc,
     "Sensitivity and uncertainty",
-    "A quick guide to which assumptions matter most and how wide the modeled range is."
+    "A quick guide to which assumptions matter most and how wide the modeled range is.",
+    "Risk"
   );
-  drawInfoBox(doc, {
-    y: 34,
+  const riskIntroBottom = drawInfoBox(doc, {
+    y: contentStart,
     title: "How to read sensitivity",
     body:
       "Each sensitivity row changes one input at a time while leaving everything else fixed. Use it to identify the assumptions that move TCO the most, not to forecast a combined best or worst case."
   });
   autoTable(doc, {
-    startY: 60,
-    theme: "striped",
+    ...getTableTheme(),
+    startY: riskIntroBottom + 8,
     head: [["Variable", "Low case", "Base", "High case", "Applied shock"]],
     body: result.sensitivity.map((item) => [
       item.label,
@@ -528,46 +614,40 @@ export const exportScenarioPdf = ({
       formatCurrency(item.baseValue),
       formatCurrency(item.highValue),
       sensitivityShockMap.get(item.label) ?? "Custom"
-    ]),
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 2.5,
-      textColor: colors.ink
-    },
-    headStyles: { fillColor: colors.accent, textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [249, 251, 252] }
+    ])
   });
   autoTable(doc, {
+    ...getTableTheme(),
     startY:
       ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 120) + 10,
-    theme: "grid",
     head: [["Monte Carlo summary", "Value", "Interpretation"]],
     body: [
-      ["P10", formatCurrency(result.simulation.p10), "A relatively favorable outcome. Only about 1 run in 10 lands this low or lower."],
+      [
+        "P10",
+        formatCurrency(result.simulation.p10),
+        "A relatively favorable outcome. Only about 1 run in 10 lands this low or lower."
+      ],
       ["P50", formatCurrency(result.simulation.p50), "The midpoint of the simulated range."],
-      ["P90", formatCurrency(result.simulation.p90), "A relatively adverse outcome. Only about 1 run in 10 lands this high or higher."],
+      [
+        "P90",
+        formatCurrency(result.simulation.p90),
+        "A relatively adverse outcome. Only about 1 run in 10 lands this high or higher."
+      ],
       ["Mean", formatCurrency(result.simulation.mean), "Average outcome across all simulation runs."],
       ["Best case", formatCurrency(result.simulation.min), "Lowest simulated outcome in this run set."],
       ["Worst case", formatCurrency(result.simulation.max), "Highest simulated outcome in this run set."]
-    ],
-    styles: {
-      fontSize: 8.5,
-      cellPadding: 2.6,
-      lineColor: colors.border,
-      lineWidth: 0.2
-    },
-    headStyles: { fillColor: colors.ink, textColor: [255, 255, 255] },
-    alternateRowStyles: { fillColor: [249, 251, 252] }
+    ]
   });
 
   doc.addPage();
-  drawPageHeader(
+  contentStart = drawPageHeader(
     doc,
     "Model notes and suggestions",
-    "Final interpretation notes for validating the scenario."
+    "Final interpretation notes for validating the scenario.",
+    "Notes"
   );
   let finalY = drawInfoBox(doc, {
-    y: 34,
+    y: contentStart,
     title: "Scope note",
     body:
       "This report intentionally focuses on purchase and resale, insurance and tax, parking, and charging. It does not currently include maintenance, repairs, vignette, or other recurring extras."
@@ -587,5 +667,18 @@ export const exportScenarioPdf = ({
   });
 
   addFooters(doc);
-  doc.save("vienna-ev-tco-report.pdf");
+  return doc;
+};
+
+export const exportScenarioPdf = ({
+  scenario,
+  result,
+  caseMode
+}: {
+  scenario: SavedScenario;
+  result: EstimatorResult;
+  caseMode: CaseMode;
+}) => {
+  const doc = buildScenarioPdfDoc({ scenario, result, caseMode });
+  doc.save("austria-ev-tco-report.pdf");
 };

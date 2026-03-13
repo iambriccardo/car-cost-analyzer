@@ -2,8 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-:root,
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 221 83% 53%;
+  color-scheme: light;
+}
+
 .dark {
+  --background: 240 10% 3.7%;
+  --foreground: 0 0% 98%;
+  --card: 240 8% 5.8%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 8% 5.8%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 240 5% 10.2%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4.8% 9.8%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 5% 10.2%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4.2% 12.2%;
+  --input: 240 4.2% 12.2%;
+  --ring: 217 91% 60%;
   color-scheme: dark;
 }
 
@@ -15,12 +56,40 @@ body {
   margin: 0;
   min-width: 320px;
   font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  background: #0b1118;
-  color: #ffffff;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.32);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.app-shell {
+  background: hsl(var(--background));
 }
 
 summary::-webkit-details-marker {

@@ -1,3 +1,5 @@
+import tailwindcssAnimate from "tailwindcss-animate";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -5,41 +7,72 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: {
-          50: "#f6f8fb",
-          100: "#eef2f7",
-          200: "#d9e1ec",
-          300: "#b7c5d9",
-          400: "#8ca0bd",
-          500: "#697f9d",
-          600: "#4f647f",
-          700: "#3b4d63",
-          800: "#263445",
-          900: "#17202c"
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))"
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))"
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))"
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))"
         },
         accent: {
-          50: "#edf8f6",
-          100: "#d5efe7",
-          200: "#acdfd0",
-          300: "#7cc9b4",
-          400: "#49ad95",
-          500: "#328f7a",
-          600: "#267364",
-          700: "#205d52",
-          800: "#1c4a42",
-          900: "#193d36"
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+          50: "#eff6ff",
+          100: "#dbeafe",
+          200: "#bfdbfe",
+          300: "#93c5fd",
+          400: "#60a5fa",
+          500: "#3b82f6",
+          600: "#2563eb",
+          700: "#1d4ed8",
+          800: "#1e40af",
+          900: "#1e3a8a"
         },
-        sand: "#f4efe8",
-        rose: "#eab7a0",
-        amber: "#e6b35a"
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))"
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))"
+        },
+        ink: {
+          50: "#fafafa",
+          100: "#f4f4f5",
+          200: "#e4e4e7",
+          300: "#d4d4d8",
+          400: "#a1a1aa",
+          500: "#71717a",
+          600: "#52525b",
+          700: "#3f3f46",
+          800: "#27272a",
+          900: "#18181b"
+        },
+        sand: "#f4f4f5",
+        rose: "#fda4af",
+        amber: "#f59e0b"
       },
       boxShadow: {
         panel:
-          "0 18px 50px -26px rgba(18, 26, 37, 0.45), 0 12px 22px -20px rgba(18, 26, 37, 0.4)"
+          "0 18px 40px -28px rgba(0, 0, 0, 0.55), 0 10px 20px -18px rgba(0, 0, 0, 0.45)"
       },
       fontFamily: {
         sans: ["'Manrope'", "ui-sans-serif", "system-ui", "sans-serif"],
-        display: ["'Fraunces'", "ui-serif", "Georgia", "serif"]
+        display: ["'Manrope'", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       animation: {
         float: "float 8s ease-in-out infinite",
@@ -57,5 +90,5 @@ export default {
       }
     }
   },
-  plugins: []
+  plugins: [tailwindcssAnimate]
 };

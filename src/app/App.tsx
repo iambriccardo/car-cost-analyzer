@@ -7,12 +7,11 @@ import {
   useMemo,
   useState
 } from "react";
-import { CircleHelp, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { fieldGroups } from "./field-config";
 import { FieldControl } from "../components/Fields";
 import { ScenarioManager } from "../components/ScenarioManager";
 import { SummarySidebar } from "../components/SummarySidebar";
-import { Tooltip } from "../components/Tooltip";
 import { calculateEstimate } from "../lib/calculator";
 import { exampleScenarios, STORAGE_VERSION } from "../lib/defaults";
 import { formatCurrency, formatNumber, formatPercent } from "../lib/format";
@@ -20,6 +19,16 @@ import { estimatorSchema, savedScenarioListSchema } from "../lib/schema";
 import { createScenario, loadScenarios, saveScenarios } from "../lib/storage";
 import type { CaseMode, EstimatorInput, SavedScenario } from "../lib/types";
 import { downloadFile, readJsonFile } from "../lib/utils";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "../components/ui/card";
+import { Slider } from "../components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
 const themeStorageKey = "vienna-car-cost-analyzer.theme";
 const fixedCaseMode: CaseMode = "base";
@@ -33,7 +42,6 @@ export function App() {
     () => loadScenarios()[0]?.id ?? exampleScenarios[0].id
   );
   const [selectedGroupId, setSelectedGroupId] = useState(fieldGroups[0].id);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   useEffect(() => {
@@ -56,14 +64,12 @@ export function App() {
       );
 
   const result = useMemo(
-    () => calculateEstimate(validation.success ? validation.data : deferredInput, fixedCaseMode),
+    () =>
+      calculateEstimate(validation.success ? validation.data : deferredInput, fixedCaseMode, {
+        includeSensitivity: false,
+        includeSimulation: false
+      }),
     [validation, deferredInput]
-  );
-
-  const selectedGroup =
-    fieldGroups.find((group) => group.id === selectedGroupId) ?? fieldGroups[0];
-  const visibleFields = selectedGroup.fields.filter(
-    (field) => showAdvanced || !field.advanced
   );
 
   const updateInput = (path: string, value: string | number | boolean) => {
@@ -72,12 +78,19 @@ export function App() {
         if (scenario.id !== selectedId) {
           return scenario;
         }
-        const next = structuredClone(scenario);
         const [section, field] = path.split(".");
-        (next.input[section as keyof EstimatorInput] as Record<string, unknown>)[field] =
-          value;
-        next.updatedAt = new Date().toISOString();
-        return next;
+        const sectionKey = section as keyof EstimatorInput;
+        return {
+          ...scenario,
+          input: {
+            ...scenario.input,
+            [sectionKey]: {
+              ...(scenario.input[sectionKey] as Record<string, unknown>),
+              [field]: value
+            }
+          } as EstimatorInput,
+          updatedAt: new Date().toISOString()
+        };
       })
     );
   };
@@ -134,9 +147,12 @@ export function App() {
     setIsExportingPdf(true);
     try {
       const { exportScenarioPdf } = await import("../lib/report");
+      const parsed = estimatorSchema.safeParse(activeScenario.input);
+      const exportInput = parsed.success ? parsed.data : activeScenario.input;
+      const exportResult = calculateEstimate(exportInput, fixedCaseMode);
       exportScenarioPdf({
-        scenario: activeScenario,
-        result,
+        scenario: { ...activeScenario, input: exportInput },
+        result: exportResult,
         caseMode: fixedCaseMode
       });
     } finally {
@@ -155,7 +171,7 @@ export function App() {
   };
 
   const resetToDefaults = () => {
-    if (!window.confirm("Reset the current scenario to the default Vienna EV assumptions?")) {
+    if (!window.confirm("Reset the current scenario to the default Austria EV assumptions?")) {
       return;
     }
     setScenarios((current) =>
@@ -174,28 +190,29 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(74,160,136,0.18),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(230,179,90,0.12),_transparent_22%),linear-gradient(180deg,_#0d141c_0%,_#111b25_38%,_#0b1118_100%)] text-white">
-      <div className="w-full px-4 py-4 sm:px-5 lg:px-6">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <div className="pl-1 text-base font-semibold tracking-[-0.03em] text-white">
-            Vienna EV TCO
-          </div>
-          <button
+    <div className="app-shell min-h-screen text-foreground">
+      <div className="w-full px-3 py-3 sm:px-4 lg:px-5">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <Badge
+            variant="outline"
+            className="rounded-full border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-foreground"
+          >
+            Austria EV TCO
+          </Badge>
+          <Button
             type="button"
-            className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink-900 shadow-[0_10px_30px_rgba(255,255,255,0.12)]"
+            size="sm"
+            variant="outline"
+            className="rounded-full"
             onClick={resetToDefaults}
           >
             Reset defaults
-          </button>
+          </Button>
         </div>
 
-        <div className="grid gap-5 xl:h-[calc(100vh-5.75rem)] xl:grid-cols-[minmax(0,1fr)_360px] xl:overflow-hidden">
-          <div className="space-y-5 xl:min-h-0 xl:overflow-y-auto">
-            <SectionCard
-              number="01"
-              title="Scenario setup"
-              description="Choose the active scenario and export either the raw configuration or the PDF validation report."
-            >
+        <div className="grid gap-4 xl:h-[calc(100vh-4.5rem)] xl:grid-cols-[minmax(0,1fr)_320px] xl:overflow-hidden">
+          <div className="space-y-4 xl:min-h-0 xl:overflow-y-auto">
+            <SectionCard title="Scenario">
               <ScenarioManager
                 scenarios={scenarios}
                 selectedId={selectedId}
@@ -217,126 +234,77 @@ export function App() {
               />
             </SectionCard>
 
-            <SectionCard
-              number="02"
-              title="Configuration"
-              description="Edit one topic at a time. The main assumptions stay visible by default, and the advanced toggle only reveals the inputs that still materially move the model."
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {fieldGroups.map((group, index) => (
-                    <button
-                      key={group.id}
-                      type="button"
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                        selectedGroupId === group.id
-                          ? "bg-white text-ink-900"
-                          : "bg-white/8 text-white/72"
-                      }`}
-                      onClick={() => setSelectedGroupId(group.id)}
-                    >
-                      {index + 1}. {group.title}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ${
-                    showAdvanced
-                      ? "bg-accent-600 text-white"
-                      : "bg-white/8 text-white/75"
-                  }`}
-                  onClick={() => setShowAdvanced((current) => !current)}
-                >
-                  <SlidersHorizontal className="mr-2 h-4 w-4" />
-                  {showAdvanced ? "Hide advanced" : "Show advanced"}
-                </button>
-              </div>
-
-              <div className="mt-5 grid items-start gap-6 lg:grid-cols-[0.68fr_1.32fr]">
-                <div className="self-start rounded-[28px] bg-ink-50 p-4 dark:bg-white/5">
-                  <div className="text-xs uppercase tracking-[0.18em] text-ink-500 dark:text-white/50">
-                    Current configuration section
-                  </div>
-                  <div className="mt-2 text-2xl font-semibold text-ink-900 dark:text-white">
-                    {selectedGroup.title}
-                  </div>
-                  <div className="mt-2 text-sm leading-7 text-ink-600 dark:text-white/65">
-                    {selectedGroup.blurb}
-                  </div>
-                  <div className="mt-4">
-                    <div className="self-start rounded-[22px] border border-white/10 bg-white/6 px-4 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/50">
-                          TCO horizon
-                        </div>
-                        <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink-900">
-                          {activeScenario.input.purchase.ownershipYears} years
-                        </div>
+            <SectionCard title="Configuration">
+              <Tabs value={selectedGroupId} onValueChange={setSelectedGroupId} className="gap-4">
+                <Card className="w-full rounded-[18px] bg-background">
+                  <CardContent className="p-3.5">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        TCO horizon
                       </div>
-                      <input
-                        type="range"
-                        min={1}
-                        max={30}
-                        step={1}
-                        value={activeScenario.input.purchase.ownershipYears}
-                        className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-white/12 accent-[#8dd3be]"
-                        onChange={(event) =>
-                          updateInput("purchase.ownershipYears", Number(event.target.value))
-                        }
-                      />
-                      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                        <span>1 year</span>
-                        <span>30 years</span>
-                      </div>
-                      <div className="mt-3 text-sm leading-6 text-white/65">
-                        The selected TCO horizon is also the assumed resale year. The model runs all
-                        recurring costs through this window and credits the resale value at the end.
-                      </div>
+                      <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px]">
+                        {activeScenario.input.purchase.ownershipYears} years
+                      </Badge>
                     </div>
-                  </div>
-                  {selectedGroup.id === "charging" ? (
-                    <ChargingFormulaCard scenario={activeScenario} />
-                  ) : null}
-                </div>
-
-                <div className="grid items-start gap-4 md:grid-cols-2">
-                  {visibleFields.map((field) => (
-                    <FieldControl
-                      key={field.path}
-                      field={field}
-                      value={getValue(activeScenario.input, field.path)}
-                      error={errors[field.path]}
-                      onChange={(value) => updateInput(field.path, value)}
+                    <Slider
+                      min={1}
+                      max={30}
+                      step={1}
+                      value={[activeScenario.input.purchase.ownershipYears]}
+                      onValueChange={(values) =>
+                        updateInput("purchase.ownershipYears", values[0] ?? 1)
+                      }
                     />
+                    <div className="mt-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      <span>1y</span>
+                      <span>30y</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/50 p-1">
+                  {fieldGroups.map((group) => (
+                    <TabsTrigger
+                      key={group.id}
+                      value={group.id}
+                      className="flex-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
+                    >
+                      {group.title}
+                    </TabsTrigger>
                   ))}
-                </div>
-              </div>
+                </TabsList>
+
+                {fieldGroups.map((group) => (
+                  <TabsContent key={group.id} value={group.id} className="mt-0 space-y-4">
+                    <div className="grid items-start gap-2.5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                      {group.fields.map((field) => (
+                        <FieldControl
+                          key={field.path}
+                          field={field}
+                          value={getValue(activeScenario.input, field.path)}
+                          error={errors[field.path]}
+                          onChange={(value) => updateInput(field.path, value)}
+                        />
+                      ))}
+                    </div>
+
+                    <SectionNarrativeCard
+                      groupId={group.id}
+                      scenario={activeScenario}
+                      result={result}
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
             </SectionCard>
 
-            <SectionCard
-              number="03"
-              title="Summary"
-              description="A compact overview of the active assumptions and the Austrian tax treatment, without expanding the page too much."
-            >
-              <CompactSummarySection
-                scenario={activeScenario}
-                taxes={result.taxes}
-              />
-            </SectionCard>
-
-            <SectionCard
-              number="04"
-              title="Graphs"
-              description="Use the charts to validate how the cost builds up over time, which variables matter most, and how wide the uncertainty range is."
-            >
+            <SectionCard title="Analytics">
               <Suspense fallback={<ChartsPanelSkeleton />}>
                 <ChartsPanel
-                  input={activeScenario.input}
+                  input={validation.success ? validation.data : deferredInput}
                   caseMode={fixedCaseMode}
                   yearly={result.yearly}
                   breakdown={result.breakdown}
-                  simulation={result.simulation}
                 />
               </Suspense>
             </SectionCard>
@@ -364,45 +332,44 @@ const getValue = (input: EstimatorInput, path: string) => {
 };
 
 function SectionCard({
-  number,
   title,
-  description,
   children
 }: {
-  number: string;
   title: string;
-  description: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[36px] border border-white/10 bg-white/5 p-5 shadow-panel backdrop-blur">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-[0.22em] text-accent-200">
-            Section {number}
-          </div>
-          <div className="mt-2 font-display text-3xl text-white">{title}</div>
-          <div className="mt-2 max-w-3xl text-sm leading-7 text-white/65">
-            {description}
-          </div>
-        </div>
-      </div>
-      <div className="mt-5">{children}</div>
-    </section>
+    <Card className="rounded-[22px] shadow-panel">
+      <CardHeader className="px-4 pt-3.5 pb-0">
+        <CardTitle className="text-[15px] font-semibold tracking-[-0.02em] text-foreground">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-3.5 pt-3">{children}</CardContent>
+    </Card>
   );
 }
 
-function ChargingFormulaCard({ scenario }: { scenario: SavedScenario }) {
-  const { charging, driving } = scenario.input;
-  const monthlyKm = driving.monthlyKm;
-  const annualKm = monthlyKm * 12 * (1 + driving.seasonalUsageAdjustment / 100);
+function SectionNarrativeCard({
+  groupId,
+  scenario,
+  result
+}: {
+  groupId: string;
+  scenario: SavedScenario;
+  result: ReturnType<typeof calculateEstimate>;
+}) {
+  const { purchase, insurance, parking, driving, charging } = scenario.input;
+  const firstYear = result.yearly[0];
+  const finalYear = result.yearly.at(-1) ?? result.yearly[0];
+  const annualKmYearOne = driving.monthlyKm * 12 * (1 + driving.seasonalUsageAdjustment / 100);
   const cityFactor = driving.cityShare * 0.94;
   const motorwayFactor = driving.motorwayShare * 1.12;
   const mixedFactor = driving.mixedShare * 1;
   const driveMixEfficiency = (cityFactor + motorwayFactor + mixedFactor) / 100;
   const winterFactor = 1 + charging.winterEfficiencyPenalty / 100 * 0.45;
   const lossesFactor = 1 + charging.chargingLosses / 100;
-  const baseEnergy = (annualKm / 100) * charging.consumptionKwhPer100Km;
+  const baseEnergy = (annualKmYearOne / 100) * charging.consumptionKwhPer100Km;
   const adjustedEnergy = baseEnergy * driveMixEfficiency * winterFactor * lossesFactor;
   const blendedDcTariff =
     (charging.superchargerShare * charging.superchargerTariff +
@@ -411,39 +378,104 @@ function ChargingFormulaCard({ scenario }: { scenario: SavedScenario }) {
   const blendedTariff =
     (charging.acShare * charging.acTariff + charging.dcShare * blendedDcTariff) / 100;
   const firstYearCharging = adjustedEnergy * blendedTariff + charging.idleFeesAnnual;
+  const firstYearParkingBase =
+    parking.monthlyParkingCost * 12 +
+    (parking.residentPermitEnabled ? parking.residentPermitAnnual : 0);
+  const firstYearInsuranceBase = insurance.monthlyPremium * 12;
+  const firstYearInsuranceAndTax = firstYear?.insuranceAndTax ?? 0;
+  const finalYearInsuranceAndTax = finalYear?.insuranceAndTax ?? 0;
+
+  const narratives: Record<string, { title: string; summary: string; lines: string[] }> = {
+    meta: {
+      title: "How vehicle and value affect price",
+      summary: "Purchase cost, resale, and tax-relevant specs all flow directly into the ownership result.",
+      lines: [
+        `${formatCurrency(purchase.purchasePrice)} purchase price plus ${formatCurrency(purchase.registrationCosts)} registration costs means about ${formatCurrency(purchase.purchasePrice + purchase.registrationCosts)} leaves your pocket at purchase time.`,
+        `${formatPercent(purchase.expectedResalePercent)} expected resale on ${formatCurrency(purchase.purchasePrice)} turns into about ${formatCurrency(result.metrics.estimatedResaleValue)} at the ${purchase.ownershipYears}-year sale point once the model also considers the WLTP range signal.`,
+        `${formatNumber(purchase.ratedMotorPowerKw)} kW tax power and ${formatNumber(purchase.vehicleWeightKg)} kg weight derive about ${formatCurrency(result.taxes.ongoing.motorTaxMonthly, true)} of Austrian motor tax per month.`
+      ]
+    },
+    insurance: {
+      title: "How insurance and tax affect price",
+      summary: "Insurance starts from your monthly quote, then the model splits or adds the derived motor tax and inflates later years.",
+      lines: [
+        `${formatCurrency(insurance.monthlyPremium)}/month becomes ${formatCurrency(firstYearInsuranceBase)}/year of gross premium before annual inflation.`,
+        insurance.includesMotorTax
+          ? `Because motor tax is marked as included, the app splits out about ${formatCurrency(result.taxes.ongoing.motorTaxAnnual)} per year of motor tax and treats the rest as net insurance premium.`
+          : `Because motor tax is not marked as included, the app adds about ${formatCurrency(result.taxes.ongoing.motorTaxAnnual)} per year of motor tax on top of the premium.`,
+        `With ${formatPercent(insurance.premiumInflation)} premium inflation, the insurance-and-tax bucket moves from about ${formatCurrency(firstYearInsuranceAndTax)} in year one to about ${formatCurrency(finalYearInsuranceAndTax)} in the final year.`
+      ]
+    },
+    parking: {
+      title: "How parking affects price",
+      summary: "Parking is modeled as a recurring fixed cost, then grown over time with parking inflation.",
+      lines: [
+        `${formatCurrency(parking.monthlyParkingCost)}/month private parking ${parking.residentPermitEnabled ? `plus ${formatCurrency(parking.residentPermitAnnual)}/year resident permit` : "with no resident permit"} gives about ${formatCurrency(firstYearParkingBase)} in year one.`,
+        `${formatPercent(parking.parkingInflation)} parking inflation lifts the parking bucket from about ${formatCurrency(firstYear?.parking ?? 0)} in year one to about ${formatCurrency(finalYear?.parking ?? 0)} in the final year.`,
+        `Over the selected horizon, parking contributes about ${formatCurrency(result.breakdown.parking)} to total TCO.`
+      ]
+    },
+    driving: {
+      title: "How driving usage affects consumption",
+      summary: "Distance drives energy demand first, then the drive mix and yearly mileage pattern change how much electricity you end up paying for.",
+      lines: [
+        `${formatNumber(driving.monthlyKm)} km/month becomes about ${formatNumber(annualKmYearOne)} km/year after the ${formatPercent(driving.seasonalUsageAdjustment)} seasonal usage adjustment.`,
+        `${formatPercent(driving.annualMileageChange)} annual mileage growth moves yearly distance from about ${formatNumber(firstYear?.kmDriven ?? 0)} km in year one to about ${formatNumber(finalYear?.kmDriven ?? 0)} km in the final year, for about ${formatNumber(result.metrics.totalKm)} km over the whole horizon.`,
+        `The current ${formatPercent(driving.cityShare)} city / ${formatPercent(driving.motorwayShare)} motorway / ${formatPercent(driving.mixedShare)} mixed split creates a drive-cycle multiplier of about ${formatNumber(driveMixEfficiency)}, which then feeds the charging model.`
+      ]
+    },
+    charging: {
+      title: "How charging affects price",
+      summary: "Charging cost starts from driven kilometres, converts them into kWh, and then applies your live tariff mix and energy modifiers.",
+      lines: [
+        `${formatNumber(driving.monthlyKm)} km/month becomes about ${formatNumber(annualKmYearOne)} km/year after the ${formatPercent(driving.seasonalUsageAdjustment)} seasonal usage adjustment, which means about ${formatNumber(baseEnergy)} kWh before charging adjustments.`,
+        `Drive mix, winter penalty, and charging losses lift that to about ${formatNumber(adjustedEnergy)} kWh/year after applying a drive-cycle factor of ${formatNumber(driveMixEfficiency)}, a winter factor of ${formatNumber(winterFactor)}, and charging losses of ${formatPercent(charging.chargingLosses)}.`,
+        `${formatPercent(charging.acShare)} AC / ${formatPercent(charging.dcShare)} DC with ${formatPercent(charging.superchargerShare)} of DC on Superchargers produces a blended energy price of about ${formatCurrency(blendedTariff, true)}/kWh.`,
+        `${formatCurrency(charging.idleFeesAnnual)} of idle-fee reserve adds on top, so first-year charging comes out at about ${formatCurrency(firstYearCharging)}, and energy price inflation of ${formatPercent(charging.energyPriceInflation)} raises later years further.`
+      ]
+    }
+  };
+
+  const narrative = narratives[groupId];
+  const [isOpen, setIsOpen] = useState(false);
+  if (!narrative) {
+    return null;
+  }
 
   return (
-    <div className="mt-4 rounded-[24px] border border-white/10 bg-white/6 px-4 py-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-white/50">
-        How charging affects price
-      </div>
-      <div className="mt-3 text-sm leading-6 text-white/70">
-        Charging cost starts from kilometres driven, converts them into kWh, then applies your
-        charging mix and tariffs. In the current base year that means:
-      </div>
-      <div className="mt-3 space-y-2 text-sm text-white/78">
-        <div>
-          {formatNumber(monthlyKm)} km/month becomes about {formatNumber(annualKm)} km/year after the{" "}
-          {formatPercent(driving.seasonalUsageAdjustment)} seasonal usage adjustment, which means about{" "}
-          {formatNumber(baseEnergy)} kWh before charging adjustments
-        </div>
-        <div>
-          Drive mix, winter penalty, and charging losses lift that to about{" "}
-          {formatNumber(adjustedEnergy)} kWh/year
-        </div>
-        <div>
-          AC/DC split and Supercharger share produce a blended energy price of about{" "}
-          {formatCurrency(blendedTariff, true)}/kWh
-        </div>
-        <div>
-          Idle fees add {formatCurrency(charging.idleFeesAnnual)} per year, and energy price inflation
-          increases both energy and charging-access cost in later years
-        </div>
-      </div>
-      <div className="mt-4 rounded-2xl bg-white/6 px-3 py-3 text-sm font-semibold text-white">
-        First-year charging cost from the current inputs: {formatCurrency(firstYearCharging)}
-      </div>
-    </div>
+    <Card className="rounded-xl border-border/80 bg-background">
+      <CardHeader className="px-4 py-3">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 text-left"
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <div className="min-w-0">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Explanation
+            </CardTitle>
+            <div className="mt-1 text-sm font-medium text-foreground">{narrative.title}</div>
+          </div>
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted/40 text-muted-foreground">
+            <ChevronDown
+              className={`h-4 w-4 transition-transform duration-200 ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </span>
+        </button>
+      </CardHeader>
+      {isOpen ? (
+        <CardContent className="space-y-3 px-4 pb-4 pt-0">
+          <div className="text-sm leading-6 text-muted-foreground">{narrative.summary}</div>
+          <div className="space-y-1.5 text-sm text-foreground/80">
+            {narrative.lines.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
+          </div>
+        </CardContent>
+      ) : null}
+    </Card>
   );
 }
 
@@ -451,203 +483,19 @@ function ChartsPanelSkeleton() {
   return (
     <div className="grid gap-6 xl:grid-cols-2">
       {Array.from({ length: 4 }, (_, index) => (
-        <div
+        <Card
           key={index}
-          className={`rounded-[32px] border border-white/10 bg-white/5 p-5 shadow-panel backdrop-blur ${
+          className={`rounded-[20px] shadow-panel ${
             index >= 2 ? "xl:col-span-2" : ""
           }`}
         >
-          <div className="h-4 w-36 rounded-full bg-white/10" />
-          <div className="mt-3 h-3 w-64 rounded-full bg-white/6" />
-          <div className="mt-6 h-[300px] rounded-[24px] bg-white/4" />
-        </div>
+          <CardContent className="p-4">
+            <div className="h-4 w-36 rounded-full bg-white/10" />
+            <div className="mt-3 h-3 w-64 rounded-full bg-white/6" />
+            <div className="mt-6 h-[300px] rounded-[24px] bg-white/4" />
+          </CardContent>
+        </Card>
       ))}
-    </div>
-  );
-}
-
-function CompactSummarySection({
-  scenario,
-  taxes
-}: {
-  scenario: SavedScenario;
-  taxes: ReturnType<typeof calculateEstimate>["taxes"];
-}) {
-  const [formulaOpen, setFormulaOpen] = useState(false);
-
-  return (
-    <>
-    <div className="grid items-start gap-4 xl:grid-cols-[1.05fr_0.9fr_0.95fr]">
-      <CompactCard title="Vehicle">
-        <CompactRow
-          label="Car"
-          value={scenario.input.meta.vehicleName}
-          help="Baseline vehicle profile currently loaded into the estimator."
-        />
-        <CompactRow
-          label="Price"
-          value={formatCurrency(scenario.input.purchase.purchasePrice)}
-          help="Entered purchase price used as the base gross vehicle cost."
-        />
-        <CompactRow
-          label="WLTP"
-          value={`${formatNumber(scenario.input.purchase.wltpRangeKm)} km`}
-          help="Official WLTP range. Used as a modest resale-attractiveness signal."
-        />
-        <CompactRow
-          label="30-min power"
-          value={`${formatNumber(scenario.input.purchase.ratedMotorPowerKw)} kW`}
-          help="Austrian tax-relevant power figure used in the derived motor tax."
-        />
-        <CompactRow
-          label="Weight"
-          value={`${formatNumber(scenario.input.purchase.vehicleWeightKg)} kg`}
-          help="Vehicle mass used in the Austrian EV motor tax calculation."
-        />
-      </CompactCard>
-
-      <CompactCard title="Use">
-        <CompactRow
-          label="Horizon"
-          value={`${scenario.input.purchase.ownershipYears} years`}
-          help="Selected TCO window over which costs and resale are evaluated."
-        />
-        <CompactRow
-          label="Monthly km"
-          value={`${formatNumber(scenario.input.driving.monthlyKm)} km`}
-          help="Starting monthly driving distance before seasonal and annual mileage adjustments."
-        />
-        <CompactRow
-          label="Insurance"
-          value={`${formatCurrency(scenario.input.insurance.monthlyPremium)}/month`}
-          help="Gross insurance premium entry. If the motor tax is included, the model splits it out."
-        />
-        <CompactRow
-          label="Parking"
-          value={
-            scenario.input.parking.residentPermitEnabled
-              ? `${formatCurrency(scenario.input.parking.monthlyParkingCost)}/month + Parkpickerl`
-              : `${formatCurrency(scenario.input.parking.monthlyParkingCost)}/month`
-          }
-          help="Private parking plus optional Parkpickerl, both carried through the parking total."
-        />
-      </CompactCard>
-
-      <CompactCard title="Austrian tax brief">
-        <CompactRow
-          label="Initial fees"
-          value={formatCurrency(taxes.initial.totalInitialTaxesAndFees)}
-          help="One-off registration fee included at purchase time."
-        />
-        <CompactRow
-          label="Motor tax / month"
-          value={formatCurrency(taxes.ongoing.motorTaxMonthly, true)}
-          help="Derived monthly motorbezogene Versicherungssteuer based on 30-minute power and weight."
-        />
-        <CompactRow
-          label="Insurance net / month"
-          value={formatCurrency(taxes.ongoing.insurancePremiumNetOfMotorTaxAnnual / 12, true)}
-          help="Monthly insurance premium excluding the derived motor tax share when your quote already bundles it."
-        />
-        <button
-          type="button"
-          className="mt-3 inline-flex items-center gap-2 rounded-full bg-white/8 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/72 transition hover:bg-white/12 hover:text-white focus:bg-white/12 focus:text-white"
-          onClick={() => setFormulaOpen(true)}
-        >
-          <CircleHelp className="h-3.5 w-3.5" />
-          Show formula chain
-        </button>
-      </CompactCard>
-    </div>
-
-      {formulaOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/78 px-4 backdrop-blur-sm"
-          onClick={() => setFormulaOpen(false)}
-        >
-          <div
-            className="max-h-[82vh] w-full max-w-3xl overflow-auto rounded-[32px] border border-white/10 bg-[#111827] p-5 shadow-[0_28px_80px_rgba(2,6,23,0.65)]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-[0.22em] text-accent-200">
-                  Austrian tax formula chain
-                </div>
-                <div className="mt-2 text-2xl font-semibold text-white">
-                  How the tax values are derived
-                </div>
-                <div className="mt-2 max-w-2xl text-sm leading-6 text-white/65">
-                  This breaks the current scenario into the registration and motor-tax steps used by the estimator.
-                </div>
-              </div>
-              <button
-                type="button"
-                aria-label="Close formula chain"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/8 text-white/70 transition hover:bg-white/12 hover:text-white"
-                onClick={() => setFormulaOpen(false)}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {taxes.formulas.map((formula) => (
-                <div key={formula.label} className="self-start rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-white/50">
-                    {formula.label}
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-white/72">{formula.expression}</div>
-                  <div className="mt-2 text-base font-semibold text-white">{formula.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
-  );
-}
-
-function CompactCard({
-  title,
-  children
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="self-start rounded-[24px] border border-white/10 bg-white/5 p-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-white/50">{title}</div>
-      <div className="mt-3 space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function CompactRow({
-  label,
-  value,
-  help
-}: {
-  label: string;
-  value: string;
-  help: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/6 px-3 py-2.5">
-      <div className="flex items-center gap-2 text-sm text-white/65">
-        <span>{label}</span>
-        <Tooltip content={help} widthClass="w-64">
-          <button
-            type="button"
-            aria-label={`Explain ${label}`}
-            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/8 text-white/60 transition hover:bg-white/12 hover:text-white focus:bg-white/12 focus:text-white"
-          >
-            <CircleHelp className="h-3.5 w-3.5" />
-          </button>
-        </Tooltip>
-      </div>
-      <div className="text-right text-sm font-semibold text-white">{value}</div>
     </div>
   );
 }
