@@ -62,6 +62,7 @@ export function App() {
   });
   const [selectedGroupId, setSelectedGroupId] = useState(fieldGroups[0].id);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [monteCarloRuns, setMonteCarloRuns] = useState(300);
 
   useEffect(() => {
     document.documentElement.classList.add("dark");
@@ -179,7 +180,11 @@ export function App() {
       const { exportScenarioPdf } = await import("../lib/report");
       const parsed = estimatorSchema.safeParse(activeScenario.input);
       const exportInput = parsed.success ? parsed.data : activeScenario.input;
-      const exportResult = calculateEstimate(exportInput, fixedCaseMode);
+      const exportResult = calculateEstimate(exportInput, fixedCaseMode, {
+        simulationIterations: monteCarloRuns,
+        includeSensitivity: true,
+        includeSimulation: true
+      });
       exportScenarioPdf({
         scenario: { ...activeScenario, input: exportInput },
         result: exportResult,
@@ -342,6 +347,8 @@ export function App() {
                   caseMode={fixedCaseMode}
                   yearly={result.yearly}
                   breakdown={result.breakdown}
+                  simulationIterations={monteCarloRuns}
+                  onSimulationIterationsChange={setMonteCarloRuns}
                 />
               </Suspense>
             </SectionCard>

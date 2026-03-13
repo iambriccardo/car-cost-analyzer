@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useDeferredValue, useMemo, useState } from "react";
 import { CircleHelp } from "lucide-react";
 import { categoryLabels, formatCurrency, formatNumber } from "../lib/format";
 import type {
@@ -75,7 +75,11 @@ type Props = {
   caseMode: CaseMode;
   yearly: YearlyCostRow[];
   breakdown: CategoryBreakdown;
+  simulationIterations: number;
+  onSimulationIterationsChange: (next: number) => void;
 };
+
+const monteCarloRunPresets = [200, 300, 500, 1000, 2000] as const;
 
 const sensitivityHelp: Record<string, string> = {
   "Fast-charging price (DC)":
@@ -99,7 +103,14 @@ const shockHelp: Record<"Lower shock" | "Higher shock", string> = {
     "Increases only the currently selected input by the chosen percentage, then recalculates TCO while everything else stays fixed."
 };
 
-export function ChartsPanel({ input, caseMode, yearly, breakdown }: Props) {
+export function ChartsPanel({
+  input,
+  caseMode,
+  yearly,
+  breakdown,
+  simulationIterations,
+  onSimulationIterationsChange
+}: Props) {
   const [analyticsView, setAnalyticsView] = useState<
     "timeline" | "mix" | "sensitivity" | "monte-carlo"
   >("timeline");
@@ -175,9 +186,13 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown }: Props) {
     );
     return Math.ceil((maxDefaultShock + 5) / 5) * 5;
   }, []);
+  const deferredSimulationIterations = useDeferredValue(simulationIterations);
   const simulation = useMemo(
-    () => (analyticsView === "monte-carlo" ? calculateSimulation(input, caseMode, 300) : null),
-    [analyticsView, caseMode, input]
+    () =>
+      analyticsView === "monte-carlo"
+        ? calculateSimulation(input, caseMode, deferredSimulationIterations)
+        : null,
+    [analyticsView, caseMode, deferredSimulationIterations, input]
   );
   const monteCarloCurve = useMemo(
     () => buildDistributionCurve(simulation?.samples ?? []),
@@ -480,6 +495,62 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown }: Props) {
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-4">
               <Card className="rounded-[20px] bg-background">
+                <CardHeader className="px-4 pt-4 pb-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+                        Simulation runs
+                      </CardTitle>
+                      <CardDescription className="mt-1 text-sm leading-6">
+                        More runs make the range smoother and more stable, but take longer to calculate.
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
+                      {deferredSimulationIterations.toLocaleString()} runs
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 p-4 pt-3">
+                  <Tabs
+                    value={String(simulationIterations)}
+                    onValueChange={(value) => onSimulationIterationsChange(Number(value))}
+                    className="gap-3"
+                  >
+                    <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
+                      {monteCarloRunPresets.map((preset) => (
+                        <TabsTrigger
+                          key={preset}
+                          value={String(preset)}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold"
+                        >
+                          {preset.toLocaleString()}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      <span>Fine tune</span>
+                      <span>{simulationIterations.toLocaleString()} runs</span>
+                    </div>
+                    <Slider
+                      min={100}
+                      max={5000}
+                      step={100}
+                      value={[simulationIterations]}
+                      onValueChange={(values) =>
+                        onSimulationIterationsChange(values[0] ?? simulationIterations)
+                      }
+                    />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>100</span>
+                      <span>5,000</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[20px] bg-background">
                 <CardContent className="grid gap-3 p-3.5 md:grid-cols-3">
                   <MonteCarloExplainStat
                     label="P10"
@@ -511,7 +582,7 @@ export function ChartsPanel({ input, caseMode, yearly, breakdown }: Props) {
                       </CardDescription>
                     </div>
                     <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
-                      {simulation.samples.length} runs
+                      {simulation.samples.length.toLocaleString()} runs
                     </Badge>
                   </div>
                 </CardHeader>

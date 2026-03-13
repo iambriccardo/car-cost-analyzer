@@ -134,6 +134,17 @@ describe("calculateEstimate", () => {
     });
   });
 
+  it("respects an explicit Monte Carlo run count in the options object", () => {
+    const result = calculateEstimate(defaultInput, "base", {
+      simulationIterations: 450,
+      includeSensitivity: false,
+      includeSimulation: true
+    });
+
+    expect(result.simulation.samples).toHaveLength(450);
+    expect(result.sensitivity).toHaveLength(0);
+  });
+
   it("keeps cost per km aligned with the reported total kilometres", () => {
     const result = calculateEstimate(defaultInput, "base", 0);
     expect(result.metrics.costPerKm).toBeCloseTo(
