@@ -32,7 +32,7 @@ export function ScenarioManager({
 }: Props) {
   return (
     <div className="space-y-2.5">
-      <div className="flex items-start gap-2.5">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start">
         <div className="min-w-0 flex-1 space-y-2">
           {scenarios.map((scenario) => {
             const active = scenario.id === selectedId;
@@ -56,7 +56,12 @@ export function ScenarioManager({
           })}
         </div>
 
-        <Button type="button" size="sm" className="rounded-full" onClick={onCreate}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-9 w-full rounded-full sm:w-auto"
+          onClick={onCreate}
+        >
           <Plus className="h-3.5 w-3.5" />
           New
         </Button>
@@ -64,7 +69,7 @@ export function ScenarioManager({
 
       <Card className="rounded-[16px]">
         <CardContent className="p-2.5">
-          <div className="flex flex-nowrap gap-1.5 overflow-x-auto">
+          <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
             <ActionButton label="Duplicate" icon={<Copy className="h-4 w-4" />} onClick={onDuplicate} />
             <ActionButton label="Rename" icon={<PencilLine className="h-4 w-4" />} onClick={onRename} />
             <ActionButton label="Delete" icon={<Trash2 className="h-4 w-4" />} onClick={onDelete} />
@@ -75,7 +80,7 @@ export function ScenarioManager({
               onClick={onExportPdf}
               disabled={isExportingPdf}
             />
-            <label className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-input bg-background px-2.5 text-xs font-semibold text-foreground transition hover:bg-accent hover:text-accent-foreground">
+            <label className="inline-flex h-8 w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-input bg-background px-2.5 text-xs font-semibold text-foreground transition hover:bg-accent hover:text-accent-foreground sm:w-auto sm:justify-start">
               <FileUp className="h-4 w-4" />
               Import
               <input
@@ -113,7 +118,7 @@ function ActionButton({
     <Button
       type="button"
       variant="outline"
-      className="h-8 shrink-0 rounded-lg bg-background px-2.5 text-xs"
+      className="h-8 w-full rounded-lg bg-background px-2.5 text-xs sm:w-auto sm:shrink-0"
       onClick={onClick}
       disabled={disabled}
     >

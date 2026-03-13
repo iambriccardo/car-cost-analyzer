@@ -231,17 +231,17 @@ export function ChartsPanel({
       }
       className="gap-4"
     >
-      <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
-        <TabsTrigger value="timeline" className="flex-none rounded-lg px-3 py-2 text-xs font-semibold">
+      <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-muted/60 p-1 [scrollbar-width:none] sm:flex-wrap">
+        <TabsTrigger value="timeline" className="flex-none whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold">
           Timeline
         </TabsTrigger>
-        <TabsTrigger value="mix" className="flex-none rounded-lg px-3 py-2 text-xs font-semibold">
+        <TabsTrigger value="mix" className="flex-none whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold">
           Cost mix
         </TabsTrigger>
-        <TabsTrigger value="sensitivity" className="flex-none rounded-lg px-3 py-2 text-xs font-semibold">
+        <TabsTrigger value="sensitivity" className="flex-none whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold">
           Sensitivity
         </TabsTrigger>
-        <TabsTrigger value="monte-carlo" className="flex-none rounded-lg px-3 py-2 text-xs font-semibold">
+        <TabsTrigger value="monte-carlo" className="flex-none whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold">
           Monte Carlo
         </TabsTrigger>
       </TabsList>
@@ -494,7 +494,7 @@ export function ChartsPanel({
           {simulation ? (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_360px]">
             <div className="space-y-4">
-              <Card className="rounded-[20px] bg-background">
+              <Card className="rounded-[18px] bg-background sm:rounded-[20px]">
                 <CardHeader className="px-4 pt-4 pb-0">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -550,7 +550,7 @@ export function ChartsPanel({
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[20px] bg-background">
+              <Card className="rounded-[18px] bg-background sm:rounded-[20px]">
                 <CardContent className="grid gap-3 p-3.5 md:grid-cols-3">
                   <MonteCarloExplainStat
                     label="P10"
@@ -587,7 +587,7 @@ export function ChartsPanel({
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 pt-3">
-                  <ResponsiveContainer width="100%" height={320}>
+                  <ResponsiveContainer width="100%" height={280}>
                     <AreaChart data={monteCarloCurve}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.15} />
                       <XAxis dataKey="tco" tickFormatter={(value) => formatCurrency(Number(value))} />
@@ -616,7 +616,7 @@ export function ChartsPanel({
             </div>
 
             <div className="space-y-4">
-              <Card className="rounded-[20px] bg-background">
+              <Card className="rounded-[18px] bg-background sm:rounded-[20px]">
                 <CardHeader className="px-4 pt-4 pb-0">
                   <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Range snapshot
@@ -632,7 +632,7 @@ export function ChartsPanel({
                 </CardContent>
               </Card>
 
-              <Card className="rounded-[20px] bg-background">
+              <Card className="rounded-[18px] bg-background sm:rounded-[20px]">
                 <CardHeader className="px-4 pt-4 pb-0">
                   <div className="flex items-center justify-between gap-3">
                     <div>

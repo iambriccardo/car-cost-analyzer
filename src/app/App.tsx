@@ -230,16 +230,16 @@ export function App() {
   };
 
   return (
-    <div className="app-shell min-h-screen text-foreground">
-      <div className="w-full px-3 py-3 sm:px-4 lg:px-5">
-        <div className="mb-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 rounded-full border border-border bg-card px-2.5 py-1.5">
+    <div className="app-shell min-h-screen overflow-x-hidden text-foreground">
+      <div className="w-full px-2 py-2.5 sm:px-4 lg:px-5">
+        <div className="mb-2.5 flex items-center justify-between gap-2 sm:mb-3 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5">
             <img
               src={logoAssetUrl}
               alt="Austria EV TCO logo"
-              className="h-7 w-7 rounded-lg"
+              className="h-6 w-6 rounded-lg sm:h-7 sm:w-7"
             />
-            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-foreground">
+            <div className="truncate pr-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground sm:text-[11px] sm:tracking-[0.24em]">
               Austria EV TCO
             </div>
           </div>
@@ -247,7 +247,7 @@ export function App() {
             type="button"
             size="sm"
             variant="outline"
-            className="rounded-full"
+            className="h-9 rounded-full px-3 text-xs sm:text-sm"
             onClick={resetToDefaults}
           >
             Reset defaults
@@ -276,10 +276,18 @@ export function App() {
               />
             </SectionCard>
 
+            <div className="xl:hidden">
+              <SummarySidebar
+                scenario={activeScenario}
+                metrics={result.metrics}
+                breakdown={result.breakdown}
+              />
+            </div>
+
             <SectionCard title="Configuration">
               <Tabs value={selectedGroupId} onValueChange={setSelectedGroupId} className="gap-4">
-                <Card className="w-full rounded-[18px] bg-background">
-                  <CardContent className="p-3.5">
+                <Card className="w-full rounded-[16px] bg-background sm:rounded-[18px]">
+                  <CardContent className="p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         TCO horizon
@@ -304,12 +312,12 @@ export function App() {
                   </CardContent>
                 </Card>
 
-                <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/50 p-1">
+                <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 [scrollbar-width:none] sm:flex-wrap">
                   {fieldGroups.map((group) => (
                     <TabsTrigger
                       key={group.id}
                       value={group.id}
-                      className="flex-none rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
+                      className="flex-none whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold"
                     >
                       {group.title}
                     </TabsTrigger>
@@ -318,7 +326,7 @@ export function App() {
 
                 {fieldGroups.map((group) => (
                   <TabsContent key={group.id} value={group.id} className="mt-0 space-y-4">
-                    <div className="grid items-start gap-2.5 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                    <div className="grid items-start gap-2 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                       {group.fields.map((field) => (
                         <FieldControl
                           key={field.path}
@@ -354,7 +362,7 @@ export function App() {
             </SectionCard>
           </div>
 
-          <div className="xl:min-h-0 xl:overflow-y-auto">
+          <div className="hidden xl:min-h-0 xl:overflow-y-auto xl:block">
             <SummarySidebar
               scenario={activeScenario}
               metrics={result.metrics}
@@ -383,13 +391,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-[22px] shadow-panel">
-      <CardHeader className="px-4 pt-3.5 pb-0">
+    <Card className="rounded-[18px] shadow-panel sm:rounded-[22px]">
+      <CardHeader className="px-3.5 pt-3 pb-0 sm:px-4 sm:pt-3.5">
         <CardTitle className="text-[15px] font-semibold tracking-[-0.02em] text-foreground">
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3.5 pt-3">{children}</CardContent>
+      <CardContent className="p-3 pt-2.5 sm:p-3.5 sm:pt-3">{children}</CardContent>
     </Card>
   );
 }

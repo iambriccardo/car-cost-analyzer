@@ -46,18 +46,19 @@ export function SummarySidebar({ scenario, metrics, breakdown }: Props) {
             Summary
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid items-start gap-2 px-3.5 pb-3.5 sm:grid-cols-2 xl:grid-cols-1">
+        <CardContent className="grid items-start gap-2 px-3.5 pb-3.5 grid-cols-2 xl:grid-cols-1">
           <SummaryStat
             label={`Total ${scenario.input.purchase.ownershipYears}-year TCO`}
             value={formatCurrency(metrics.totalTco)}
             help={statHelp[`Total ${scenario.input.purchase.ownershipYears}-year TCO`]}
             strong
+            className="col-span-2 xl:col-span-1"
           />
           <SummaryStat label="Monthly equivalent" value={formatCurrency(metrics.monthlyEquivalent)} help={statHelp["Monthly equivalent"]} />
           <SummaryStat label="Estimated resale" value={formatCurrency(metrics.estimatedResaleValue)} help={statHelp["Estimated resale"]} />
           <SummaryStat label="Cost per km" value={formatCurrency(metrics.costPerKm, true)} help={statHelp["Cost per km"]} />
           <SummaryStat label="Cash spent before resale" value={formatCurrency(metrics.totalCashOutflow)} help={statHelp["Cash spent before resale"]} />
-          <SummaryStat label="Total distance" value={formatNumber(metrics.totalKm, " km")} help={statHelp["Total distance"]} />
+          <SummaryStat label="Total distance" value={formatNumber(metrics.totalKm, " km")} help={statHelp["Total distance"]} className="col-span-2 xl:col-span-1" />
         </CardContent>
       </Card>
 
@@ -95,21 +96,23 @@ function SummaryStat({
   label,
   value,
   help,
-  strong = false
+  strong = false,
+  className = ""
 }: {
   label: string;
   value: string;
   help: string;
   strong?: boolean;
+  className?: string;
 }) {
   return (
-    <Card className="self-start gap-0 rounded-[16px] bg-background">
+    <Card className={`self-start gap-0 rounded-[16px] bg-background ${className}`}>
       <CardContent className="px-3.5 py-3.5">
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
         <span>{label}</span>
         <InfoButton label={label} help={help} />
       </div>
-      <div className={strong ? "mt-2 text-[1.7rem] font-extrabold text-foreground" : "mt-2 text-[15px] font-bold text-foreground"}>
+      <div className={strong ? "mt-2 text-[1.55rem] font-extrabold text-foreground sm:text-[1.7rem]" : "mt-2 text-[15px] font-bold text-foreground"}>
         {value}
       </div>
       </CardContent>
