@@ -39,6 +39,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 const themeStorageKey = "vienna-car-cost-analyzer.theme";
 const fixedCaseMode: CaseMode = "base";
 const logoAssetUrl = `${import.meta.env.BASE_URL}logo.png`;
+
+const isChunkLoadError = (error: unknown) =>
+  error instanceof Error &&
+  /Failed to fetch dynamically imported module|Importing a module script failed|preload/i.test(
+    error.message
+  );
+
 const ChartsPanel = lazy(() =>
   import("../components/ChartsPanel").then((module) => ({ default: module.ChartsPanel }))
 );
@@ -178,6 +185,11 @@ export function App() {
         result: exportResult,
         caseMode: fixedCaseMode
       });
+    } catch (error) {
+      console.error("PDF export failed", error);
+      if (!isChunkLoadError(error)) {
+        window.alert("Could not export the PDF report.");
+      }
     } finally {
       setIsExportingPdf(false);
     }
@@ -249,9 +261,7 @@ export function App() {
                 onRename={renameScenario}
                 onDelete={deleteScenario}
                 onExportConfig={exportScenarioConfig}
-                onExportPdf={() => {
-                  exportPdf().catch(() => window.alert("Could not export the PDF report."));
-                }}
+                onExportPdf={exportPdf}
                 isExportingPdf={isExportingPdf}
                 onImport={(file) => {
                   importScenarios(file).catch(() =>
