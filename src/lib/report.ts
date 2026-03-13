@@ -15,13 +15,13 @@ import type {
 const colors = {
   page: [255, 255, 255] as [number, number, number],
   surface: [255, 255, 255] as [number, number, number],
-  surfaceAlt: [248, 250, 252] as [number, number, number],
-  surfaceStrong: [239, 246, 255] as [number, number, number],
-  border: [226, 232, 240] as [number, number, number],
+  surfaceAlt: [246, 248, 252] as [number, number, number],
+  surfaceStrong: [244, 247, 255] as [number, number, number],
+  border: [214, 223, 234] as [number, number, number],
   text: [15, 23, 42] as [number, number, number],
-  muted: [100, 116, 139] as [number, number, number],
-  primary: [37, 99, 235] as [number, number, number],
-  primarySoft: [219, 234, 254] as [number, number, number]
+  muted: [71, 85, 105] as [number, number, number],
+  primary: [29, 78, 216] as [number, number, number],
+  primarySoft: [223, 232, 255] as [number, number, number]
 };
 
 const getValue = (scenario: SavedScenario, path: string) => {
@@ -254,7 +254,7 @@ const drawMetricCard = (
     y: y + 4,
     text: pillText,
     fill: strong ? colors.primary : colors.surfaceAlt,
-    color: strong ? colors.surface : colors.muted,
+    color: strong ? ([255, 255, 255] as [number, number, number]) : colors.muted,
     width: pillWidth
   });
   doc.setFont("helvetica", "bold");
