@@ -51,19 +51,6 @@ describe("storage persistence", () => {
     expect(localStorage.getItem("austria-ev-tco.scenarios")).not.toBeNull();
   });
 
-  it("migrates scenarios from the legacy Vienna storage key", () => {
-    localStorage.setItem(
-      "vienna-car-cost-analyzer.scenarios",
-      JSON.stringify(exampleScenarios)
-    );
-
-    const loaded = loadScenarios();
-
-    expect(loaded).toEqual(exampleScenarios);
-    expect(localStorage.getItem("austria-ev-tco.scenarios")).not.toBeNull();
-    expect(localStorage.getItem("vienna-car-cost-analyzer.scenarios")).toBeNull();
-  });
-
   it("persists and reloads the selected scenario id", () => {
     saveSelectedScenarioId(exampleScenarios[0].id);
 
@@ -71,18 +58,5 @@ describe("storage persistence", () => {
     expect(localStorage.getItem("austria-ev-tco.selected-scenario-id")).toBe(
       exampleScenarios[0].id
     );
-  });
-
-  it("migrates the selected scenario id from the legacy key", () => {
-    localStorage.setItem(
-      "vienna-car-cost-analyzer.selected-scenario-id",
-      exampleScenarios[0].id
-    );
-
-    expect(loadSelectedScenarioId()).toBe(exampleScenarios[0].id);
-    expect(localStorage.getItem("austria-ev-tco.selected-scenario-id")).toBe(
-      exampleScenarios[0].id
-    );
-    expect(localStorage.getItem("vienna-car-cost-analyzer.selected-scenario-id")).toBeNull();
   });
 });

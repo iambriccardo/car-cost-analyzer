@@ -4,12 +4,10 @@ import type { SavedScenario } from "./types";
 import { uid } from "./utils";
 
 const STORAGE_KEY = "austria-ev-tco.scenarios";
-const LEGACY_STORAGE_KEY = "vienna-car-cost-analyzer.scenarios";
 const SELECTED_SCENARIO_KEY = "austria-ev-tco.selected-scenario-id";
-const LEGACY_SELECTED_SCENARIO_KEY = "vienna-car-cost-analyzer.selected-scenario-id";
 
-const readScenarios = (key: string): SavedScenario[] | null => {
-  const raw = localStorage.getItem(key);
+const readScenarios = (): SavedScenario[] | null => {
+  const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
     return null;
   }
@@ -27,19 +25,7 @@ const readScenarios = (key: string): SavedScenario[] | null => {
 };
 
 export const loadScenarios = (): SavedScenario[] => {
-  const current = readScenarios(STORAGE_KEY);
-  if (current) {
-    return current;
-  }
-
-  const legacy = readScenarios(LEGACY_STORAGE_KEY);
-  if (legacy) {
-    saveScenarios(legacy);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-    return legacy;
-  }
-
-  return exampleScenarios;
+  return readScenarios() ?? exampleScenarios;
 };
 
 export const saveScenarios = (scenarios: SavedScenario[]) => {
@@ -47,19 +33,7 @@ export const saveScenarios = (scenarios: SavedScenario[]) => {
 };
 
 export const loadSelectedScenarioId = () => {
-  const current = localStorage.getItem(SELECTED_SCENARIO_KEY);
-  if (current) {
-    return current;
-  }
-
-  const legacy = localStorage.getItem(LEGACY_SELECTED_SCENARIO_KEY);
-  if (legacy) {
-    saveSelectedScenarioId(legacy);
-    localStorage.removeItem(LEGACY_SELECTED_SCENARIO_KEY);
-    return legacy;
-  }
-
-  return null;
+  return localStorage.getItem(SELECTED_SCENARIO_KEY);
 };
 
 export const saveSelectedScenarioId = (id: string) => {
