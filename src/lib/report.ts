@@ -247,15 +247,20 @@ const drawMetricCard = (
     h: 24,
     fill: strong ? colors.surfaceStrong : colors.surface
   });
-  setFillColor(doc, strong ? colors.primary : colors.surfaceAlt);
-  doc.roundedRect(x + 4, y + 4, strong ? 22 : 16, 3.2, 1.6, 1.6, "F");
+  const pillText = label.toUpperCase();
+  const pillWidth = Math.min(w - 8, Math.max(18, pillText.length * 1.75 + 8));
+  drawPill(doc, {
+    x: x + 4,
+    y: y + 4,
+    text: pillText,
+    fill: strong ? colors.primary : colors.surfaceAlt,
+    color: strong ? colors.surface : colors.muted,
+    width: pillWidth
+  });
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  setTextColor(doc, colors.muted);
-  doc.text(label.toUpperCase(), x + 4, y + 7);
-  doc.setFontSize(strong ? 18 : 14);
+  doc.setFontSize(strong ? 17 : 14);
   setTextColor(doc, colors.text);
-  doc.text(value, x + 4, y + 17);
+  doc.text(value, x + 4, y + 17.5);
 };
 
 const drawMetricGrid = (doc: jsPDF, result: EstimatorResult, y: number) => {
