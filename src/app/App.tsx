@@ -281,6 +281,7 @@ export function App() {
                 scenario={activeScenario}
                 metrics={result.metrics}
                 breakdown={result.breakdown}
+                taxes={result.taxes}
               />
             </div>
 
@@ -367,6 +368,7 @@ export function App() {
               scenario={activeScenario}
               metrics={result.metrics}
               breakdown={result.breakdown}
+              taxes={result.taxes}
             />
           </div>
         </div>

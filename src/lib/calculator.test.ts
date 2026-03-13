@@ -39,6 +39,16 @@ describe("calculateEstimate", () => {
     );
     expect(result.taxes.ongoing.motorTaxMonthly).toBeCloseTo(32.46, 2);
     expect(result.taxes.ongoing.motorTaxAnnual).toBeCloseTo(389.52, 2);
+    expect(
+      result.taxes.breakdown.powerSteps.reduce((sum, step) => sum + step.subtotal, 0)
+    ).toBeCloseTo(result.taxes.breakdown.powerMonthly, 2);
+    expect(
+      result.taxes.breakdown.weightSteps.reduce((sum, step) => sum + step.subtotal, 0)
+    ).toBeCloseTo(result.taxes.breakdown.weightMonthly, 2);
+    expect(result.taxes.breakdown.monthlyTotal).toBeCloseTo(
+      result.taxes.ongoing.motorTaxMonthly,
+      2
+    );
   });
 
   it("keeps default resale in line with the configured residual assumption", () => {

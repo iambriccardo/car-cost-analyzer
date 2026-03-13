@@ -128,6 +128,26 @@ export interface TaxSummary {
     insurancePremiumGrossAnnual: number;
     insurancePremiumNetOfMotorTaxAnnual: number;
   };
+  breakdown: {
+    powerBasisKw: number;
+    weightBasisKg: number;
+    powerSteps: Array<{
+      label: string;
+      units: number;
+      rate: number;
+      subtotal: number;
+    }>;
+    weightSteps: Array<{
+      label: string;
+      units: number;
+      rate: number;
+      subtotal: number;
+    }>;
+    powerMonthly: number;
+    weightMonthly: number;
+    monthlyTotal: number;
+    annualTotal: number;
+  };
   formulas: Array<{
     label: string;
     expression: string;

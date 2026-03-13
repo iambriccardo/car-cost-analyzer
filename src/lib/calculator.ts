@@ -68,31 +68,73 @@ const emptySimulationSummary = (): SimulationSummary => ({
   drivers: []
 });
 
-const powerTaxPerMonth = (ratedPowerKw: number) => {
-  const taxableKw = Math.max(10, ratedPowerKw - 45);
-  const first = Math.min(35, taxableKw) * 0.25;
-  const second = Math.min(25, Math.max(0, taxableKw - 35)) * 0.35;
-  const third = Math.max(0, taxableKw - 60) * 0.45;
-  return first + second + third;
-};
-
-const weightTaxPerMonth = (weightKg: number) => {
-  const taxableKg = Math.max(200, weightKg - 900);
-  const first = Math.min(500, taxableKg) * 0.015;
-  const second = Math.min(700, Math.max(0, taxableKg - 500)) * 0.03;
-  const third = Math.max(0, taxableKg - 1200) * 0.045;
-  return first + second + third;
-};
-
 const derivePurchaseGross = (input: EstimatorInput) =>
   roundCurrency(input.purchase.purchasePrice);
 
+export const deriveMotorTaxBreakdown = (input: EstimatorInput) => {
+  const powerBasisKw = Math.max(10, input.purchase.ratedMotorPowerKw - 45);
+  const weightBasisKg = Math.max(200, input.purchase.vehicleWeightKg - 900);
+
+  const powerSteps = [
+    {
+      label: "First 35 kW",
+      units: Math.min(35, powerBasisKw),
+      rate: 0.25
+    },
+    {
+      label: "Next 25 kW",
+      units: Math.min(25, Math.max(0, powerBasisKw - 35)),
+      rate: 0.35
+    },
+    {
+      label: "Remaining kW",
+      units: Math.max(0, powerBasisKw - 60),
+      rate: 0.45
+    }
+  ].map((step) => ({
+    ...step,
+    subtotal: roundCurrency(step.units * step.rate)
+  }));
+
+  const weightSteps = [
+    {
+      label: "First 500 kg",
+      units: Math.min(500, weightBasisKg),
+      rate: 0.015
+    },
+    {
+      label: "Next 700 kg",
+      units: Math.min(700, Math.max(0, weightBasisKg - 500)),
+      rate: 0.03
+    },
+    {
+      label: "Remaining kg",
+      units: Math.max(0, weightBasisKg - 1200),
+      rate: 0.045
+    }
+  ].map((step) => ({
+    ...step,
+    subtotal: roundCurrency(step.units * step.rate)
+  }));
+
+  const powerMonthly = roundCurrency(sum(powerSteps.map((step) => step.subtotal)));
+  const weightMonthly = roundCurrency(sum(weightSteps.map((step) => step.subtotal)));
+  const monthlyTotal = roundCurrency(powerMonthly + weightMonthly);
+
+  return {
+    powerBasisKw,
+    weightBasisKg,
+    powerSteps,
+    weightSteps,
+    powerMonthly,
+    weightMonthly,
+    monthlyTotal,
+    annualTotal: roundCurrency(monthlyTotal * 12)
+  };
+};
+
 export const deriveMotorTaxAnnual = (input: EstimatorInput) =>
-  roundCurrency(
-    (powerTaxPerMonth(input.purchase.ratedMotorPowerKw) +
-      weightTaxPerMonth(input.purchase.vehicleWeightKg)) *
-      12
-  );
+  deriveMotorTaxBreakdown(input).annualTotal;
 
 export const deriveNova = (_input: EstimatorInput) => 0;
 
@@ -108,11 +150,8 @@ const deriveTaxSummary = (
       ? Math.max(0, insurancePremiumGrossAnnual - annualMotorTax)
       : insurancePremiumGrossAnnual
   );
-  const taxablePowerKw = Math.max(10, input.purchase.ratedMotorPowerKw - 45);
-  const taxableWeightKg = Math.max(200, input.purchase.vehicleWeightKg - 900);
-  const powerMonthly = roundCurrency(powerTaxPerMonth(input.purchase.ratedMotorPowerKw));
-  const weightMonthly = roundCurrency(weightTaxPerMonth(input.purchase.vehicleWeightKg));
-  const monthlyMotorTax = roundCurrency(powerMonthly + weightMonthly);
+  const motorTaxBreakdown = deriveMotorTaxBreakdown(input);
+  const monthlyMotorTax = motorTaxBreakdown.monthlyTotal;
 
   return {
     initial: {
@@ -127,16 +166,17 @@ const deriveTaxSummary = (
       insurancePremiumGrossAnnual,
       insurancePremiumNetOfMotorTaxAnnual
     },
+    breakdown: motorTaxBreakdown,
     formulas: [
       {
         label: "Power tax component",
-        expression: `max(10, kW - 45) => ${taxablePowerKw.toFixed(0)} kW basis`,
-        value: `EUR ${powerMonthly.toFixed(2)} / month`
+        expression: `max(10, kW - 45) => ${motorTaxBreakdown.powerBasisKw.toFixed(0)} kW basis`,
+        value: `EUR ${motorTaxBreakdown.powerMonthly.toFixed(2)} / month`
       },
       {
         label: "Weight tax component",
-        expression: `max(200, kg - 900) => ${taxableWeightKg.toFixed(0)} kg basis`,
-        value: `EUR ${weightMonthly.toFixed(2)} / month`
+        expression: `max(200, kg - 900) => ${motorTaxBreakdown.weightBasisKg.toFixed(0)} kg basis`,
+        value: `EUR ${motorTaxBreakdown.weightMonthly.toFixed(2)} / month`
       },
       {
         label: "Motor tax total",

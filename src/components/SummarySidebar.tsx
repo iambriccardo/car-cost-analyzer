@@ -1,6 +1,12 @@
 import { CircleHelp } from "lucide-react";
 import { formatCurrency, formatNumber } from "../lib/format";
-import type { CategoryBreakdown, HeadlineMetrics, SavedScenario } from "../lib/types";
+import type {
+  CategoryBreakdown,
+  HeadlineMetrics,
+  SavedScenario,
+  TaxSummary
+} from "../lib/types";
+import { MotorTaxDialog } from "./MotorTaxDialog";
 import {
   Card,
   CardContent,
@@ -13,9 +19,10 @@ type Props = {
   scenario: SavedScenario;
   metrics: HeadlineMetrics;
   breakdown: CategoryBreakdown;
+  taxes: TaxSummary;
 };
 
-export function SummarySidebar({ scenario, metrics, breakdown }: Props) {
+export function SummarySidebar({ scenario, metrics, breakdown, taxes }: Props) {
   const buckets = [
     { label: "Car & depreciation", value: breakdown.purchaseAndDepreciation },
     { label: "Insurance & tax", value: breakdown.insuranceAndTax },
@@ -86,6 +93,29 @@ export function SummarySidebar({ scenario, metrics, breakdown }: Props) {
               </div>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-[18px]">
+        <CardHeader className="px-3.5 pt-3.5">
+          <CardTitle className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+            Austrian Motor Tax
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 px-3.5 pb-3.5">
+          <div className="grid grid-cols-2 gap-2">
+            <SummaryStat
+              label="Monthly"
+              value={formatCurrency(taxes.ongoing.motorTaxMonthly, true)}
+              help="Derived motorbezogene Versicherungssteuer based on tax-relevant 30-minute power and vehicle weight."
+            />
+            <SummaryStat
+              label="Annual"
+              value={formatCurrency(taxes.ongoing.motorTaxAnnual)}
+              help="Monthly motor tax multiplied by 12."
+            />
+          </div>
+          <MotorTaxDialog input={scenario.input} taxes={taxes} />
         </CardContent>
       </Card>
     </aside>
