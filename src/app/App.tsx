@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 
 const themeStorageKey = "vienna-car-cost-analyzer.theme";
 const fixedCaseMode: CaseMode = "base";
+const logoAssetUrl = `${import.meta.env.BASE_URL}logo.png`;
 const ChartsPanel = lazy(() =>
   import("../components/ChartsPanel").then((module) => ({ default: module.ChartsPanel }))
 );
@@ -193,12 +194,16 @@ export function App() {
     <div className="app-shell min-h-screen text-foreground">
       <div className="w-full px-3 py-3 sm:px-4 lg:px-5">
         <div className="mb-3 flex items-center justify-between gap-4">
-          <Badge
-            variant="outline"
-            className="rounded-full border-border bg-card px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] text-foreground"
-          >
-            Austria EV TCO
-          </Badge>
+          <div className="flex items-center gap-2.5 rounded-full border border-border bg-card px-2.5 py-1.5">
+            <img
+              src={logoAssetUrl}
+              alt="Austria EV TCO logo"
+              className="h-7 w-7 rounded-lg"
+            />
+            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-foreground">
+              Austria EV TCO
+            </div>
+          </div>
           <Button
             type="button"
             size="sm"

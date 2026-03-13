@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="Austria EV TCO logo" width="144" />
+</p>
+
 # Austria EV TCO
 
 Local-first EV total cost of ownership calculator for Austria. The app runs entirely in the browser with no backend and focuses on cash purchase, Austrian EV insurance tax treatment, parking, public charging, resale, sensitivity analysis, and Monte Carlo ranges.
