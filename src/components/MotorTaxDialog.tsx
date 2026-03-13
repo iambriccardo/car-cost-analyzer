@@ -35,7 +35,7 @@ export function MotorTaxDialog({ input, taxes }: Props) {
           className="h-8 w-full justify-center rounded-full text-xs font-semibold"
         >
           <Calculator className="h-3.5 w-3.5" />
-          Show formula
+          Show tax formula
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] max-w-[calc(100%-1.5rem)] overflow-hidden rounded-[24px] border-border/80 p-0 sm:max-w-5xl">
@@ -58,12 +58,12 @@ export function MotorTaxDialog({ input, taxes }: Props) {
               ) : null}
             </div>
             <DialogTitle className="text-xl tracking-[-0.03em]">
-              How the motorbezogene tax is calculated
+              How the Austrian motor tax is calculated
             </DialogTitle>
             <DialogDescription className="max-w-3xl leading-6">
               Austria derives the EV motorbezogene Versicherungssteuer from the
-              tax-relevant 30-minute power and the vehicle mass. The model uses the same
-              derived monthly total everywhere else in the app.
+              tax-relevant 30-minute power and the vehicle mass. The same derived monthly
+              amount is used everywhere else in the app.
             </DialogDescription>
           </DialogHeader>
 

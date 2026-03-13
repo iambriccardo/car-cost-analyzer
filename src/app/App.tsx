@@ -231,15 +231,15 @@ export function App() {
 
   return (
     <div className="app-shell min-h-screen overflow-x-hidden text-foreground">
-      <div className="w-full px-2 py-2.5 sm:px-4 lg:px-5">
-        <div className="mb-2.5 flex items-center justify-between gap-2 sm:mb-3 sm:gap-4">
-          <div className="flex min-w-0 items-center gap-2 rounded-full border border-border bg-card px-2 py-1.5">
+      <div className="w-full px-2 py-2 sm:px-4 lg:px-5">
+        <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-border bg-card px-2 py-1 sm:px-2.5 sm:py-1.5">
             <img
               src={logoAssetUrl}
               alt="Austria EV TCO logo"
-              className="h-6 w-6 rounded-lg sm:h-7 sm:w-7"
+              className="h-5 w-5 rounded-lg sm:h-7 sm:w-7"
             />
-            <div className="truncate pr-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground sm:text-[11px] sm:tracking-[0.24em]">
+            <div className="truncate pr-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground sm:pr-1 sm:text-[11px] sm:tracking-[0.24em]">
               Austria EV TCO
             </div>
           </div>
@@ -247,7 +247,7 @@ export function App() {
             type="button"
             size="sm"
             variant="outline"
-            className="h-9 rounded-full px-3 text-xs sm:text-sm"
+            className="h-8 rounded-full px-2.5 text-[11px] sm:h-9 sm:px-3 sm:text-sm"
             onClick={resetToDefaults}
           >
             Reset defaults
@@ -282,6 +282,7 @@ export function App() {
                 metrics={result.metrics}
                 breakdown={result.breakdown}
                 taxes={result.taxes}
+                compact
               />
             </div>
 
@@ -361,6 +362,19 @@ export function App() {
                 />
               </Suspense>
             </SectionCard>
+
+            <div className="px-1 pb-3 text-center text-[11px] text-muted-foreground sm:text-left">
+              Built by{" "}
+              <a
+                href="https://github.com/iambriccardo"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-foreground transition hover:text-primary"
+              >
+                Riccardo Busetti
+              </a>
+              .
+            </div>
           </div>
 
           <div className="hidden xl:min-h-0 xl:overflow-y-auto xl:block">
@@ -393,13 +407,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="rounded-[18px] shadow-panel sm:rounded-[22px]">
-      <CardHeader className="px-3.5 pt-3 pb-0 sm:px-4 sm:pt-3.5">
+    <Card className="rounded-[16px] shadow-panel sm:rounded-[22px]">
+      <CardHeader className="px-3 pt-2.5 pb-0 sm:px-4 sm:pt-3.5">
         <CardTitle className="text-[15px] font-semibold tracking-[-0.02em] text-foreground">
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-3 pt-2.5 sm:p-3.5 sm:pt-3">{children}</CardContent>
+      <CardContent className="p-2.5 pt-2 sm:p-3.5 sm:pt-3">{children}</CardContent>
     </Card>
   );
 }
@@ -441,8 +455,8 @@ function SectionNarrativeCard({
 
   const narratives: Record<string, { title: string; summary: string; lines: string[] }> = {
     meta: {
-      title: "How vehicle and value affect price",
-      summary: "Purchase cost, resale, and tax-relevant specs all flow directly into the ownership result.",
+      title: "How purchase and resale affect the result",
+      summary: "The upfront car price, the registration fee, and the resale assumption all move the final ownership cost directly.",
       lines: [
         `${formatCurrency(purchase.purchasePrice)} purchase price plus ${formatCurrency(purchase.registrationCosts)} registration costs means about ${formatCurrency(purchase.purchasePrice + purchase.registrationCosts)} leaves your pocket at purchase time.`,
         `${formatPercent(purchase.expectedResalePercent)} expected resale on ${formatCurrency(purchase.purchasePrice)} turns into about ${formatCurrency(result.metrics.estimatedResaleValue)} at the ${purchase.ownershipYears}-year sale point once the model also considers the WLTP range signal.`,
@@ -450,8 +464,8 @@ function SectionNarrativeCard({
       ]
     },
     insurance: {
-      title: "How insurance and tax affect price",
-      summary: "Insurance starts from your monthly quote, then the model splits or adds the derived motor tax and inflates later years.",
+      title: "How insurance and tax affect the result",
+      summary: "The model starts from your monthly insurance quote, then either splits out or adds the derived Austrian motor tax.",
       lines: [
         `${formatCurrency(insurance.monthlyPremium)}/month becomes ${formatCurrency(firstYearInsuranceBase)}/year of gross premium before annual inflation.`,
         insurance.includesMotorTax
@@ -461,8 +475,8 @@ function SectionNarrativeCard({
       ]
     },
     parking: {
-      title: "How parking affects price",
-      summary: "Parking is modeled as a recurring fixed cost, then grown over time with parking inflation.",
+      title: "How parking affects the result",
+      summary: "Parking is treated as a recurring fixed cost, then increased over time with parking inflation.",
       lines: [
         `${formatCurrency(parking.monthlyParkingCost)}/month private parking ${parking.residentPermitEnabled ? `plus ${formatCurrency(parking.residentPermitAnnual)}/year resident permit` : "with no resident permit"} gives about ${formatCurrency(firstYearParkingBase)} in year one.`,
         `${formatPercent(parking.parkingInflation)} parking inflation lifts the parking bucket from about ${formatCurrency(firstYear?.parking ?? 0)} in year one to about ${formatCurrency(finalYear?.parking ?? 0)} in the final year.`,
@@ -470,8 +484,8 @@ function SectionNarrativeCard({
       ]
     },
     driving: {
-      title: "How driving usage affects consumption",
-      summary: "Distance drives energy demand first, then the drive mix and yearly mileage pattern change how much electricity you end up paying for.",
+      title: "How driving usage affects energy demand",
+      summary: "Distance drives energy use first, then the driving mix and yearly mileage trend change how much electricity you end up buying.",
       lines: [
         `${formatNumber(driving.monthlyKm)} km/month becomes about ${formatNumber(annualKmYearOne)} km/year after the ${formatPercent(driving.seasonalUsageAdjustment)} seasonal usage adjustment.`,
         `${formatPercent(driving.annualMileageChange)} annual mileage growth moves yearly distance from about ${formatNumber(firstYear?.kmDriven ?? 0)} km in year one to about ${formatNumber(finalYear?.kmDriven ?? 0)} km in the final year, for about ${formatNumber(result.metrics.totalKm)} km over the whole horizon.`,
@@ -479,8 +493,8 @@ function SectionNarrativeCard({
       ]
     },
     charging: {
-      title: "How charging affects price",
-      summary: "Charging cost starts from driven kilometres, converts them into kWh, and then applies your live tariff mix and energy modifiers.",
+      title: "How charging affects the result",
+      summary: "Charging cost starts from kilometres driven, converts them into kWh, and then applies your tariff mix and efficiency adjustments.",
       lines: [
         `${formatNumber(driving.monthlyKm)} km/month becomes about ${formatNumber(annualKmYearOne)} km/year after the ${formatPercent(driving.seasonalUsageAdjustment)} seasonal usage adjustment, which means about ${formatNumber(baseEnergy)} kWh before charging adjustments.`,
         `Drive mix, winter penalty, and charging losses lift that to about ${formatNumber(adjustedEnergy)} kWh/year after applying a drive-cycle factor of ${formatNumber(driveMixEfficiency)}, a winter factor of ${formatNumber(winterFactor)}, and charging losses of ${formatPercent(charging.chargingLosses)}.`,

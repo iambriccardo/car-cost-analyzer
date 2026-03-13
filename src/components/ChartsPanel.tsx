@@ -83,17 +83,17 @@ const monteCarloRunPresets = [200, 300, 500, 1000, 2000] as const;
 
 const sensitivityHelp: Record<string, string> = {
   "Fast-charging price (DC)":
-    "How much total ownership cost changes if public DC fast charging becomes cheaper or more expensive.",
+    "Shows how total ownership cost changes if public DC fast charging becomes cheaper or more expensive.",
   "Annual distance driven":
-    "How much total ownership cost changes if your yearly kilometres move lower or higher.",
+    "Shows how total ownership cost changes if your yearly kilometres move lower or higher.",
   "Insurance premium":
-    "How much total ownership cost reacts to the monthly insurance premium you enter.",
+    "Shows how total ownership cost reacts to the monthly insurance premium you enter.",
   "Private parking cost":
-    "How much total ownership cost reacts to the monthly private parking amount you pay.",
+    "Shows how total ownership cost reacts to the monthly private parking amount you pay.",
   "Residual value assumption":
-    "How much total ownership cost reacts to the resale percentage assumption at the time you sell the car.",
+    "Shows how total ownership cost reacts to the resale percentage you expect when you sell the car.",
   "Slow-charging price (AC)":
-    "How much total ownership cost changes if public AC charging becomes cheaper or more expensive."
+    "Shows how total ownership cost changes if public AC charging becomes cheaper or more expensive."
 };
 
 const shockHelp: Record<"Lower shock" | "Higher shock", string> = {
@@ -200,13 +200,13 @@ export function ChartsPanel({
   );
   const driverHelp: Record<string, string> = {
     "Fast-charging price (DC)":
-      "How sensitive total cost is to the public DC fast-charging tariff you pay.",
+      "How strongly the final result moves when the public DC fast-charging tariff changes.",
     "Annual distance driven":
-      "How much total cost changes when your driven kilometres move up or down.",
+      "How strongly the final result moves when your driven kilometres move up or down.",
     "Residual value assumption":
-      "How much total cost reacts to the resale percentage assumption at sale time.",
+      "How strongly the final result moves when the resale percentage changes at sale time.",
     "Slow-charging price (AC)":
-      "How sensitive total cost is to your public AC charging tariff.",
+      "How strongly the final result moves when your public AC charging tariff changes.",
     "Energy price inflation":
       "How much the long-run TCO shifts when charging tariffs rise faster or slower each year.",
     "Insurance premium inflation":
@@ -220,7 +220,7 @@ export function ChartsPanel({
     "Annual mileage growth":
       "How much TCO changes if your yearly kilometres trend upward or downward over the ownership period.",
     "Tesla Supercharger tariff":
-      "How sensitive total cost is to the Tesla Supercharger price used inside the DC charging mix."
+      "How strongly the final result moves when the Tesla Supercharger price changes inside the DC charging mix."
   };
 
   return (
@@ -249,9 +249,9 @@ export function ChartsPanel({
       <TabsContent value="timeline" className="mt-0">
         <div className="grid gap-4 xl:grid-cols-2">
           <ChartCard
-            title="Stacked yearly cost bars"
-            summary="Annual cost build-up by category."
-            tooltip="Higher bars mean a more expensive year. Larger colored segments show which cost bucket is driving that year."
+            title="Yearly cost by category"
+            summary="Each bar shows one year of ownership cost, split by category."
+            tooltip="Higher bars mean a more expensive year. Larger colored sections show which cost category is driving that year."
           >
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={yearly}>
@@ -280,8 +280,8 @@ export function ChartsPanel({
 
           <ChartCard
             title="Cumulative cost"
-            summary="How total cost accumulates over time."
-            tooltip="A steeper line means costs are building faster. Lower is better. This chart is positive-only because it tracks accumulated cost."
+            summary="Shows how total cost builds over time."
+            tooltip="A steeper line means costs are building faster. Lower is better. This chart only goes up because it tracks accumulated cost."
           >
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={yearly}>
@@ -311,8 +311,8 @@ export function ChartsPanel({
         <div className="grid gap-4 xl:grid-cols-2">
           <ChartCard
             title="Category breakdown"
-            summary="Switch between share of total TCO and average monthly impact by cost bucket."
-            tooltip="Use Share to understand composition of total cost. Use Monthly to see how much each bucket contributes to the average monthly ownership cost."
+            summary="Switch between share of total TCO and average monthly cost by category."
+            tooltip="Use Share to see what makes up total cost. Use Monthly to see how much each category contributes to the average monthly ownership cost."
           >
             <Tabs
               value={categoryView}
@@ -378,8 +378,8 @@ export function ChartsPanel({
           </ChartCard>
 
           <ChartCard
-            title="Distance and charging demand"
-            summary="Shows how yearly kilometres translate into yearly energy demand."
+            title="Distance and energy demand"
+            summary="Shows how yearly kilometres translate into yearly charging demand."
             tooltip="Higher bars mean more kilometres driven. The line shows the matching charging demand in kWh after the current efficiency, winter, and charging-loss assumptions."
           >
             <ResponsiveContainer width="100%" height={300}>
@@ -434,13 +434,13 @@ export function ChartsPanel({
       <TabsContent value="sensitivity" className="mt-0">
         <ChartCard
           title="Sensitivity ranges"
-          summary="Move one input at a time and see how much the final TCO shifts."
+          summary="Move one input at a time and see how much the final TCO changes."
           tooltip="Each driver changes only one input while everything else stays fixed. Left means cheaper TCO. Right means more expensive TCO."
         >
           <div className="mb-3 grid gap-2 md:grid-cols-3">
             <CompactExplainTile title="Base case" text="Current TCO only." />
-            <CompactExplainTile title="Lower shock" text="One-input downside." />
-            <CompactExplainTile title="Higher shock" text="One-input upside." />
+            <CompactExplainTile title="Lower shock" text="One input moved lower." />
+            <CompactExplainTile title="Higher shock" text="One input moved higher." />
           </div>
 
           <Tabs
@@ -488,8 +488,8 @@ export function ChartsPanel({
       <TabsContent value="monte-carlo" className="mt-0">
         <ChartCard
           title="Monte Carlo range"
-          summary="The same TCO model rerun many times with uncertainty in the main drivers."
-          tooltip="The deterministic summary stays your main answer. Monte Carlo adds a probability range around it by varying uncertain inputs like tariffs, mileage, and resale."
+          summary="Runs the same TCO model many times with uncertainty in the main drivers."
+          tooltip="The deterministic summary stays your main answer. Monte Carlo adds a probability range around it by varying uncertain inputs such as tariffs, mileage, and resale."
         >
           {simulation ? (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_360px]">
@@ -502,7 +502,7 @@ export function ChartsPanel({
                         Simulation runs
                       </CardTitle>
                       <CardDescription className="mt-1 text-sm leading-6">
-                        More runs make the range smoother and more stable, but take longer to calculate.
+                        More runs make the range smoother and more stable, but they also take longer to calculate.
                       </CardDescription>
                     </div>
                     <Badge variant="secondary" className="rounded-full px-3 py-1 text-[11px]">
@@ -640,7 +640,7 @@ export function ChartsPanel({
                         Main uncertainty drivers
                       </CardTitle>
                       <CardDescription className="mt-1 text-sm leading-6">
-                        Ranked by correlation with the simulated TCO range.
+                        Ranked by how strongly each input moves with the simulated TCO range.
                       </CardDescription>
                     </div>
                   </div>
@@ -681,14 +681,16 @@ function ChartCard({
 }) {
   return (
     <Card className={`flex h-full flex-col rounded-[24px] shadow-panel ${className}`}>
-      <CardHeader className="flex-row items-start justify-between gap-3 px-4 pt-4 pb-0">
+      <CardHeader className="px-4 pt-4 pb-0">
         <div className="space-y-1">
-          <CardTitle className="text-sm font-semibold tracking-[-0.02em] text-foreground">
-            {title}
-          </CardTitle>
-          <CardDescription className="text-sm leading-6">{summary}</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="min-w-0 text-sm font-semibold tracking-[-0.02em] text-foreground">
+              {title}
+            </CardTitle>
+            <InfoButton label={title} help={tooltip} />
+          </div>
+          <CardDescription className="pr-1 text-sm leading-6">{summary}</CardDescription>
         </div>
-        <InfoButton label={title} help={tooltip} />
       </CardHeader>
       <CardContent className="flex-1 p-4">{children}</CardContent>
     </Card>

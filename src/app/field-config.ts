@@ -43,7 +43,7 @@ export const fieldGroups: FieldGroup[] = [
   {
     id: "meta",
     title: "Vehicle & value",
-    blurb: "Only the inputs needed for cash purchase, Austrian EV tax split, and resale.",
+    blurb: "Purchase price, tax-relevant specs, and resale assumptions.",
     fields: [
       {
         path: "purchase.purchasePrice",
@@ -75,7 +75,7 @@ export const fieldGroups: FieldGroup[] = [
         path: "purchase.ratedMotorPowerKw",
         type: "number",
         label: "Tax power",
-        help: "Use the Austrian tax-relevant rated power if known. Higher tax power increases the derived motorbezogene tax and therefore raises the insurance-and-tax bucket.",
+        help: "Use the Austrian tax-relevant rated power if known. Higher tax power increases the derived Austrian motor tax and therefore raises the insurance-and-tax bucket.",
         step: 1,
         min: 10,
         advanced: true,
@@ -85,7 +85,7 @@ export const fieldGroups: FieldGroup[] = [
         path: "purchase.vehicleWeightKg",
         type: "number",
         label: "Vehicle weight",
-        help: "Used with tax power to derive the EV motor tax share. Higher weight increases the derived motor tax and therefore raises the insurance-and-tax bucket.",
+        help: "Used with tax power to derive the Austrian motor tax share. Higher weight increases the derived motor tax and therefore raises the insurance-and-tax bucket.",
         step: 10,
         min: 800,
         advanced: true,
@@ -106,7 +106,7 @@ export const fieldGroups: FieldGroup[] = [
   {
     id: "insurance",
     title: "Insurance & tax",
-    blurb: "Insurance is treated mainly as the quote you enter, plus the derived Austrian motor tax split.",
+    blurb: "Your insurance quote, plus the derived Austrian motor tax split.",
     fields: [
       {
         path: "insurance.monthlyPremium",
@@ -120,7 +120,7 @@ export const fieldGroups: FieldGroup[] = [
         path: "insurance.includesMotorTax",
         type: "toggle",
         label: "Premium includes motor tax",
-        help: "If enabled, the app treats part of the entered premium as the derived motor tax instead of adding motor tax on top. Turn it off only if your insurance quote excludes that tax."
+        help: "If enabled, the app treats part of the entered premium as the derived Austrian motor tax instead of adding motor tax on top. Turn it off only if your insurance quote excludes that tax."
       },
       {
         path: "insurance.premiumInflation",
@@ -137,7 +137,7 @@ export const fieldGroups: FieldGroup[] = [
   {
     id: "parking",
     title: "Parking",
-    blurb: "Model private parking and the optional resident permit separately. They can both apply at the same time.",
+    blurb: "Private parking and the optional resident permit are modeled separately.",
     fields: [
       {
         path: "parking.monthlyParkingCost",
@@ -177,7 +177,7 @@ export const fieldGroups: FieldGroup[] = [
   {
     id: "driving",
     title: "Driving usage",
-    blurb: "Distance and drive-cycle assumptions feed charging and resale.",
+    blurb: "Distance and driving mix feed charging cost and resale.",
     fields: [
       {
         path: "driving.monthlyKm",
@@ -246,7 +246,7 @@ export const fieldGroups: FieldGroup[] = [
   {
     id: "charging",
     title: "Charging",
-    blurb: "Public charging is modeled as a first-class workflow, including AC/DC mix and losses.",
+    blurb: "Public charging with AC/DC mix, losses, winter effects, and tariff inflation.",
     fields: [
       {
         path: "charging.consumptionKwhPer100Km",
