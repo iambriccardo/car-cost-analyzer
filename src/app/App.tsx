@@ -16,7 +16,13 @@ import { calculateEstimate } from "../lib/calculator";
 import { exampleScenarios, STORAGE_VERSION } from "../lib/defaults";
 import { formatCurrency, formatNumber, formatPercent } from "../lib/format";
 import { estimatorSchema, savedScenarioListSchema } from "../lib/schema";
-import { createScenario, loadScenarios, saveScenarios } from "../lib/storage";
+import {
+  createScenario,
+  loadScenarios,
+  loadSelectedScenarioId,
+  saveScenarios,
+  saveSelectedScenarioId
+} from "../lib/storage";
 import type { CaseMode, EstimatorInput, SavedScenario } from "../lib/types";
 import { downloadFile, readJsonFile } from "../lib/utils";
 import { Badge } from "../components/ui/badge";
@@ -39,9 +45,14 @@ const ChartsPanel = lazy(() =>
 
 export function App() {
   const [scenarios, setScenarios] = useState<SavedScenario[]>(() => loadScenarios());
-  const [selectedId, setSelectedId] = useState(
-    () => loadScenarios()[0]?.id ?? exampleScenarios[0].id
-  );
+  const [selectedId, setSelectedId] = useState(() => {
+    const loadedScenarios = loadScenarios();
+    const persistedId = loadSelectedScenarioId();
+    if (persistedId && loadedScenarios.some((scenario) => scenario.id === persistedId)) {
+      return persistedId;
+    }
+    return loadedScenarios[0]?.id ?? exampleScenarios[0].id;
+  });
   const [selectedGroupId, setSelectedGroupId] = useState(fieldGroups[0].id);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
@@ -53,6 +64,17 @@ export function App() {
   useEffect(() => {
     saveScenarios(scenarios);
   }, [scenarios]);
+
+  useEffect(() => {
+    if (!scenarios.some((scenario) => scenario.id === selectedId)) {
+      const fallbackId = scenarios[0]?.id ?? exampleScenarios[0].id;
+      if (fallbackId !== selectedId) {
+        setSelectedId(fallbackId);
+      }
+      return;
+    }
+    saveSelectedScenarioId(selectedId);
+  }, [scenarios, selectedId]);
 
   const activeScenario =
     scenarios.find((scenario) => scenario.id === selectedId) ?? scenarios[0];
