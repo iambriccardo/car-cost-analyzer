@@ -32,7 +32,7 @@ export function ScenarioManager({
 }: Props) {
   return (
     <div className="space-y-2">
-      <div className="flex items-start gap-2 sm:gap-2.5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2.5">
         <div className="min-w-0 flex-1 space-y-2">
           {scenarios.map((scenario) => {
             const active = scenario.id === selectedId;
@@ -59,7 +59,7 @@ export function ScenarioManager({
         <Button
           type="button"
           size="sm"
-          className="h-10 min-w-[84px] rounded-full px-3 text-sm sm:h-9 sm:min-w-0 sm:w-auto"
+          className="h-10 w-full rounded-full px-3 text-sm sm:h-9 sm:min-w-0 sm:w-auto"
           onClick={onCreate}
         >
           <Plus className="h-3.5 w-3.5" />
