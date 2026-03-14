@@ -17,6 +17,28 @@ type Props = {
 
 const baseInputClass = "mt-1.5";
 
+const parseLocaleNumber = (value: string) => {
+  const compactValue = value.trim().replace(/\s/g, "");
+  if (!compactValue) {
+    return Number.NaN;
+  }
+
+  const hasComma = compactValue.includes(",");
+  const hasDot = compactValue.includes(".");
+
+  if (hasComma && hasDot) {
+    const decimalSeparator =
+      compactValue.lastIndexOf(",") > compactValue.lastIndexOf(".") ? "," : ".";
+    const normalized =
+      decimalSeparator === ","
+        ? compactValue.replace(/\./g, "").replace(",", ".")
+        : compactValue.replace(/,/g, "");
+    return Number(normalized);
+  }
+
+  return Number(compactValue.replace(",", "."));
+};
+
 function FieldControlComponent({ field, value, error, onChange }: Props) {
   const [draftValue, setDraftValue] = useState(
     field.type === "number" && typeof value === "number" ? String(value) : ""
@@ -40,7 +62,6 @@ function FieldControlComponent({ field, value, error, onChange }: Props) {
                   type="button"
                   aria-label={`Explain ${field.label}`}
                   className="inline-flex h-4.5 w-4.5 items-center justify-center rounded-full border border-transparent text-muted-foreground transition hover:bg-accent hover:text-foreground"
-                  onClick={(event) => event.preventDefault()}
                 >
                   <CircleHelp className="h-3 w-3" />
                 </button>
@@ -62,19 +83,18 @@ function FieldControlComponent({ field, value, error, onChange }: Props) {
         {field.type === "number" ? (
           <Input
             className={clsx(baseInputClass, error && "border-destructive bg-destructive/10")}
-            type="number"
+            type="text"
             inputMode="decimal"
+            autoComplete="off"
             value={draftValue}
-            step={field.step ?? 1}
-            min={field.min}
-            max={field.max}
             onChange={(event) => {
               const nextValue = event.target.value;
               setDraftValue(nextValue);
               if (nextValue === "") {
                 return;
               }
-              const parsed = Number(nextValue);
+
+              const parsed = parseLocaleNumber(nextValue);
               if (Number.isFinite(parsed)) {
                 onChange(parsed);
               }
